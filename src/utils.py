@@ -14,11 +14,17 @@ def load_target_sample():
 
 
 def load_data_template(season=False):
-    data = [pd.read_csv('data/NCAATourneyCompactResults.csv')]
+    tourney_games = pd.read_csv('data/NCAATourneyCompactResults.csv')
+    tourney_games['game_set'] = 'ncaa'
+    data = [tourney_games]
+    if season:
+        season_games = pd.read_csv('data/RegularSeasonCompactResults.csv')
+        season_games['game_set'] = 'season'
+        data.append(season_games)
+
     data = pd.concat(data).astype({
         'Season': str, 'WTeamID': str, 'LTeamID': str
     })
-    data['game_set'] = 'ncaa'
     data['team_a'] = data[['WTeamID', 'LTeamID']]\
         .apply(lambda t: t[0] if int(t[0]) < int(t[1]) else t[1], axis=1)
     data['team_b'] = data[['WTeamID', 'LTeamID']]\
