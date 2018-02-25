@@ -88,4 +88,5 @@ class GameFeatures(Feature):
         if fillna is not None:
             new_df.fillna(fillna, inplace=True)
 
+        new_df['a_win'] = df['a_win']
         return new_df
