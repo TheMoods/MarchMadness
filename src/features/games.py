@@ -12,8 +12,8 @@ class GameFeatures(Feature):
         self.season_games = self\
                 .load_game_data('RegularSeasonCompactResults.csv')
         self.average_rankings = self\
-                .load_ranks('MasseyOrdinals.csv')
-            
+            .load_ranks('MasseyOrdinals.csv')
+        
     def load_game_data(self, path):
         games = pd.read_csv('{}{}'.format(self.data_path, path))
         games = games.astype({
