@@ -73,13 +73,18 @@ class GameFeatures(Feature):
                 drop_unlagged=True)
         return games_won_in_tourney_against_opponent
 
-    def per_team_wrapper(self, df, feature_func, per_game=False, fillna=None, **kw_args):
+    def per_team_wrapper(self, df, feature_func,
+                         per_game=False, per_day=False,
+                         fillna=None, **kw_args):
         new_df = cp.deepcopy(df)
         for team, opponent in [('team_a', 'team_b'), ('team_b', 'team_a')]:
             if per_game:
                 left_merge_cols = [team, opponent, 'Season']
             else:
                 left_merge_cols = [team, 'Season']
+
+            if per_day:
+                left_merge_cols.append('DayNum')
 
             new_df = pd.merge(new_df, feature_func(df, team, **kw_args),
                     left_on=left_merge_cols, right_index=True,
