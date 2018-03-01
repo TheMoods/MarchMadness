@@ -108,6 +108,9 @@ class GameFeatures(Feature):
             else:
                 left_merge_cols = [team, 'Season']
 
+            if per_day:
+                left_merge_cols.append('DayNum')
+
             new_df = pd.merge(new_df, feature_func(df, team, **kw_args),
                     left_on=left_merge_cols, right_index=True,
                     how='left')
