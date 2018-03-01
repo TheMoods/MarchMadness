@@ -2,7 +2,6 @@ import copy as cp
 import pandas as pd
 from src.features.feature import Feature
 
-
 class GameFeatures(Feature):
 
     def __init__(self, default_lags=3):
@@ -12,7 +11,9 @@ class GameFeatures(Feature):
                 .load_game_data('NCAATourneyCompactResults.csv')
         self.season_games = self\
                 .load_game_data('RegularSeasonCompactResults.csv')
-
+        self.average_rankings = self\
+                .load_ranks('MasseyOrdinals.csv')
+            
     def load_game_data(self, path):
         games = pd.read_csv('{}{}'.format(self.data_path, path))
         games = games.astype({
@@ -22,6 +23,14 @@ class GameFeatures(Feature):
             })
         games['diff'] = games['WScore'] - games['LScore']
         return games
+    
+    def load_ranks(self, path):
+        ranks = pd.read_csv('{}{}'.format(self.data_path, path))
+        ranks = ranks.astype({
+            'TeamID': str,
+            'Season': str
+        })
+        return ranks
 
     def lag_features(self, df, drop_unlagged, lags=None):
         if lags is None:
@@ -73,6 +82,24 @@ class GameFeatures(Feature):
                 drop_unlagged=True)
         return games_won_in_tourney_against_opponent
 
+    def average_ranking_team(self, df, team, 
+             name='average_ranking'):
+        average_ranking_team = self.average_rankings\
+                .groupby(['TeamID','Season',]).mean()[['OrdinalRank']]\
+                .rename(columns={'OrdinalRank': '{}_{}'.format(name, team)})
+        average_ranking_team = self.lag_features(average_ranking_team,
+                drop_unlagged=False)
+        return average_ranking_team
+    
+    def sd_ranking_team(self, df, team, 
+                        name='sd_rankings'):
+        sd_ranking_team = self.average_rankings\
+                .groupby(['TeamID', 'Season',]).std()[['OrdinalRank']]\
+                .rename(columns={'OrdinalRank': '{}_{}'.format(name, team)})
+        sd_ranking_team = self.lag_features(sd_ranking_team,
+                drop_unlagged=False)
+        return sd_ranking_team
+    
     def per_team_wrapper(self, df, feature_func, per_game=False, fillna=None, **kw_args):
         new_df = cp.deepcopy(df)
         for team, opponent in [('team_a', 'team_b'), ('team_b', 'team_a')]:
