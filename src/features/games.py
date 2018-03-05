@@ -31,20 +31,6 @@ class GameFeatures(Feature):
         })
         return ranks
 
-    def lag_features(self, df, drop_unlagged, lags=None):
-        if lags is None:
-            lags = self.default_lags
-        group_columns = [c for c in df.index.names if c not in 'Season']
-        for c in df.columns:
-            for l in range(1, lags+1):
-                df['{}_lag-{}'.format(c, l)] = df.groupby(group_columns)[[c]]\
-                        .shift(l).fillna(0)
-
-            if drop_unlagged:
-                df.drop(c, inplace=True, axis=1)
-
-        return df
-
     def games_won_in_season(self, df, team,
             name='games_won_in_season'):
         games_won_in_season = self.season_games\
