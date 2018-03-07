@@ -22,8 +22,8 @@ class Feature(object):
                 left_merge_cols.append('DayNum')
 
             new_df = pd.merge(new_df, feature_func(df, team, **kw_args),
-                    left_on=left_merge_cols, right_index=True,
-                    how='left')
+                              left_on=left_merge_cols, right_index=True,
+                              how='left')
 
         if fillna is not None:
             new_df.fillna(fillna, inplace=True)
@@ -38,11 +38,12 @@ class Feature(object):
         if isinstance(df, pd.Series):
             df = pd.DataFrame(df)
 
-        group_columns = df.index.names
+        group_cols = df.index.names[:-1]
         for c in df.columns:
             for l in range(1, lags+1):
-                df['{}_lag-{}'.format(c, l)] = df.reset_index()\
-                        .groupby(group_columns)[[c]]\
+                df['{}_lag-{}'.format(c, l)] = df\
+                        .sort_index()\
+                        .groupby(group_cols)[[c]]\
                         .shift(l).fillna(0)
 
             if drop_unlagged:
