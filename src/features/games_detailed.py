@@ -12,22 +12,14 @@ class GameDetailedFeatures(GameFeatures):
     def __init__(self, default_lags=1):
         super().__init__()
         self.default_lags = default_lags
-        self.tourney_games = self\
-                .load_game_data('NCAATourneyDetailedResults.csv')
         self.season_games = self\
                 .load_game_data('RegularSeasonDetailedResults.csv')
-        self.all_games = pd.concat([self.tourney_games, self.season_games])
-
-    def load_game_data(self, path):
-        games = pd.read_csv('{}{}'.format(self.data_path, path))
-        games = games.astype({
-            'LTeamID': str,
-            'WTeamID': str,
-            'Season': str
-            })
-        games['diff'] = games['WScore'] - games['LScore']
-        games.DayNum.fillna(366, inplace=True)
-        return games
+        self.tourney_games = self\
+                .load_game_data('NCAATourneyDetailedResults.csv')
+        self.all_games = pd.concat([
+            self.season_games,
+            self.tourney_games
+        ])
 
     def lag_features(self, df, drop_unlagged, lags=None):
         if lags is None:
