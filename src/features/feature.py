@@ -38,9 +38,11 @@ class Feature(object):
         if isinstance(df, pd.Series):
             df = pd.DataFrame(df)
 
+        group_columns = df.index.names
         for c in df.columns:
             for l in range(1, lags+1):
-                df['{}_lag-{}'.format(c, l)] = df.groupby(group_columns)[[c]]\
+                df['{}_lag-{}'.format(c, l)] = df.reset_index()\
+                        .groupby(group_columns)[[c]]\
                         .shift(l).fillna(0)
 
             if drop_unlagged:
