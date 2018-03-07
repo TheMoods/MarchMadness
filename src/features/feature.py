@@ -7,7 +7,7 @@ class Feature(object):
     def __init__(self, data_path='data/'):
         self.data_path = data_path
         self.default_lags = None
-    
+
     def per_team_wrapper(self, df, feature_func,
                          per_game=False, per_day=False,
                          fillna=None, **kw_args):
@@ -22,15 +22,15 @@ class Feature(object):
                 left_merge_cols.append('DayNum')
 
             new_df = pd.merge(new_df, feature_func(df, team, **kw_args),
-                    left_on=left_merge_cols, right_index=True,
-                    how='left')
+                              left_on=left_merge_cols, right_index=True,
+                              how='left')
 
         if fillna is not None:
             new_df.fillna(fillna, inplace=True)
 
         new_df['a_win'] = df['a_win']
         return new_df
-    
+
     def lag_features(self, df, drop_unlagged, lags=None):
         if lags is None:
             lags = self.default_lags
@@ -38,10 +38,12 @@ class Feature(object):
         if isinstance(df, pd.Series):
             df = pd.DataFrame(df)
 
-        group_columns = [c for c in df.index.names if c not in 'Season']
+        group_cols = df.index.names[:-1]
         for c in df.columns:
             for l in range(1, lags+1):
-                df['{}_lag-{}'.format(c, l)] = df.groupby(group_columns)[[c]]\
+                df['{}_lag-{}'.format(c, l)] = df\
+                        .sort_index()\
+                        .groupby(group_cols)[[c]]\
                         .shift(l).fillna(0)
 
             if drop_unlagged:
