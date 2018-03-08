@@ -23,7 +23,8 @@ def load_data_template(season=False):
         data.append(season_games)
 
     data = pd.concat(data).astype({
-        'Season': str, 'WTeamID': str, 'LTeamID': str
+        'Season': str, 'WTeamID': str,
+        'LTeamID': str, 'DayNum': int
     })
     data['team_a'] = data[['WTeamID', 'LTeamID']]\
         .apply(lambda t: t[0] if int(t[0]) < int(t[1]) else t[1], axis=1)
@@ -36,9 +37,12 @@ def load_data_template(season=False):
     data['in_target'] = data[['Season', 'team_a', 'team_b']]\
         .apply(lambda r: '_'.join(r.values) in target_index, axis=1)
     data = pd.merge(target, data,
-                    on=['Season', 'team_a', 'team_b', 'game_set', 'in_target'], how='outer')
+                    on=['Season', 'team_a', 'team_b', 'game_set', 'in_target'],
+                    how='outer')
+    data['DayNum'].fillna(366, inplace=True)
     data = data.astype({
-        'Season': str, 'team_a': str, 'team_b': str,
+        'Season': int, 'DayNum': int,
+        'team_a': str, 'team_b': str,
         'in_target': bool
     })
     data['game_set'] = LabelEncoder().fit_transform(data['game_set'])

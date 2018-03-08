@@ -16,8 +16,8 @@ class GameFeatures(Feature):
         games = games.astype({
             'LTeamID': str,
             'WTeamID': str,
-            'Season': str,
-            'DayNum': str
+            'Season': int,
+            'DayNum': int
             })
         if any(c in games.columns for c in ['WScore', 'LScore']):
             games['diff'] = games['WScore'] - games['LScore']
