@@ -21,6 +21,18 @@ class GameDetailedFeatures(GameFeatures):
             self.tourney_games
         ])
 
+    def load_game_data(self, path):
+        games = pd.read_csv('{}{}'.format(self.data_path, path))
+        games = games.astype({
+            'LTeamID': str,
+            'WTeamID': str,
+            'Season': int,
+            'DayNum': int
+            })
+        games['diff'] = games['WScore'] - games['LScore']
+        games.DayNum.fillna(366, inplace=True)
+        return games
+
     def lag_features(self, df, drop_unlagged, lags=None):
         if lags is None:
             lags = self.default_lags
