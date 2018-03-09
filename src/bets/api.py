@@ -1,7 +1,10 @@
 import json
+import time
 import pprint as pp
-from betfairlightweight import filters as fi
 from copy import deepcopy
+from betfairlightweight import filters as fi
+from datetime import datetime
+from numpy.random import choice
 from pandas import DataFrame, Series, concat, merge, read_csv
 
 
@@ -29,15 +32,13 @@ def expand_dict_value_col(c):
 
 class BetsAPI(object):
     market_projection = [
-        "RUNNER_METADATA", "MARKET_DESCRIPTION",
-        "EVENT", "COMPETITION",
-        "EVENT_TYPE", "MARKET_START_TIME"
+        'RUNNER_METADATA', 'MARKET_DESCRIPTION',
+        'EVENT', 'COMPETITION',
+        'EVENT_TYPE', 'MARKET_START_TIME'
     ]
-    match_projection = [
-        "NO_ROLLUP"
-    ]
-    price_projection = fi\
-        .price_projection(price_data=fi.price_data(["EX_BEST_OFFERS"]))
+    match_projection = 'NO_ROLLUP'
+    order_projection = 'ALL'
+    price_projection = {'priceData': ['EX_BEST_OFFERS']}
 
     def __init__(self, client, allow_reload=True,
                  league_name='NCAAB', bet_type='MATCH_ODDS', currency='EUR'):
@@ -58,15 +59,27 @@ class BetsAPI(object):
         if not loaded:
             self.request_data()
 
+        self.build_secondary_tables()
+
+    def update_data(self):
+        self.request_data()
+        self.build_secondary_tables()
+        return self
+
+    def listen_data(self, tick=5):
+        while True:
+            print('Updating data')
+            self.update_data()
+            time.sleep(tick)
+
+    def build_secondary_tables(self):
         runners = expand_dict_value_col(self.mkt_cat['runners'])
         runners['runnerId'] = runners.metadata.apply(lambda d: d['runnerId'])
         runners.drop('metadata', axis=1, inplace=True)
         self.runners = runners
 
-        odds = expand_dict_value_col(self.mkt_book['runners'])
-        # odds['runnerId'] = odds.metadata.apply(lambda d: d['runnerId'])
-        # odds.drop('metadata', axis=1, inplace=True)
-        self.odds = odds
+        descriptions = expand_dict_value_col(self.mkt_cat['description'])
+        self.descriptions = descriptions
 
     def load_last_data(self):
         try:
@@ -107,12 +120,12 @@ class BetsAPI(object):
             self.league = next(c for c in comp_list if is_league(c))
         except StopIteration:
             raise StopIteration(
-                '''
+                """
                     It seems like the requested league with name '{}'
                     is currently not available as no matching league
                     can be found on Betfair
                     Available leagues (competitions) are: {}
-                '''.format(self.league_name,
+                """.format(self.league_name,
                            [c['competition']['name'] for c in comp_list])
             )
         self.market_filter = fi\
@@ -133,12 +146,16 @@ class BetsAPI(object):
             .apply(lambda d: d['marketType'])
         mkt_cat = mkt_cat[mkt_cat['marketType'] == self.bet_type]
         mkt_cat.set_index('marketId', inplace=True)
+        mkt_cat['retrieved'] = datetime.now().isoformat()
 
         mkt_book = self.client.betting\
             .list_market_book(market_ids=mkt_cat.index,
                               currency_code=self.currency,
-                              price_projection=self.price_projection)
+                              price_projection=self.price_projection,
+                              order_projection=self.order_projection,
+                              match_projection=self.match_projection)
         mkt_book = DataFrame(mkt_book).set_index('marketId')
+        mkt_book['retrieved'] = datetime.now().isoformat()
 
         self.mkt_cat = mkt_cat
         self.mkt_book = mkt_book
