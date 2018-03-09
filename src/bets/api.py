@@ -6,17 +6,25 @@ from pandas import DataFrame, Series, concat, merge, read_csv
 
 
 def expand_dict_value_col(c):
+    """
+    Takes a pandas series of dicts or lists of dicts
+    and expands the first level of contained values into a new dataframe.
+    Works only with single index at the moment.
+    """
+    assert len(c.index.names) == 1
     if type(c.iloc[0]) == list:
-        return concat([concat([Series(r) for r in row], axis=1)
-                      for row in c.values],
-                      axis=1).transpose()
+        df = concat([concat([Series({**e, 'index': i}) for e in r], axis=1)
+                    for i, r in c.iteritems()],
+                    axis=1).transpose()
+    elif type(c.iloc[0]) == dict:
+        df = concat([Series({**e, 'index': i}) for i, e in c.iteritems()],
+                    axis=1).transpose()
+    else:
+        raise Exception('Please pass a dict or list of dicts, not {}'
+                        .format(type(c.iloc[0])))
 
-    if type(c.iloc[0]) == dict:
-        return concat([Series(r) for row in c.values],
-                      axis=1).transpose()
-
-    raise Exception('Please pass a dict or list of dicts, not {}'
-                    .format(type(c.iloc[0])))
+    df.set_index('index', inplace=True)
+    return df
 
 
 class BetsAPI(object):
@@ -29,14 +37,14 @@ class BetsAPI(object):
         "NO_ROLLUP"
     ]
     price_projection = fi\
-        .price_projection(price_data=fi.price_data(["EX_ALL_OFFERS"]))
+        .price_projection(price_data=fi.price_data(["EX_BEST_OFFERS"]))
 
     def __init__(self, client, allow_reload=True,
                  league_name='NCAAB', bet_type='MATCH_ODDS', currency='EUR'):
         """
             Notes:
                 * `league` corresponds to `competition` in the Betfair API
-                * `game` corresponds to `event` in the Betfair API
+                * `runner` corresponds to `event` in the Betfair API
                 * `team` corresponds to `runner` on Betfair
         """
         self.bet_type = bet_type
@@ -50,7 +58,15 @@ class BetsAPI(object):
         if not loaded:
             self.request_data()
 
-        self.games = self.get_games_from_cat(self.mkt_cat)
+        runners = expand_dict_value_col(self.mkt_cat['runners'])
+        runners['runnerId'] = runners.metadata.apply(lambda d: d['runnerId'])
+        runners.drop('metadata', axis=1, inplace=True)
+        self.runners = runners
+
+        odds = expand_dict_value_col(self.mkt_book['runners'])
+        # odds['runnerId'] = odds.metadata.apply(lambda d: d['runnerId'])
+        # odds.drop('metadata', axis=1, inplace=True)
+        self.odds = odds
 
     def load_last_data(self):
         try:
@@ -90,14 +106,13 @@ class BetsAPI(object):
         try:
             self.league = next(c for c in comp_list if is_league(c))
         except StopIteration:
-            pass
             raise StopIteration(
                 '''
                     It seems like the requested league with name '{}'
                     is currently not available as no matching league
                     can be found on Betfair
                     Available leagues (competitions) are: {}
-                '''.format(league_name,
+                '''.format(self.league_name,
                            [c['competition']['name'] for c in comp_list])
             )
         self.market_filter = fi\
@@ -128,13 +143,3 @@ class BetsAPI(object):
         self.mkt_cat = mkt_cat
         self.mkt_book = mkt_book
         self.save_data()
-
-    def get_games_from_cat(self, df, col='runners'):
-        """
-        Retrieve the individual games from the json runners columns
-        """
-        games = expand_dict_value_col(df[col])
-        games['runnerId'] = games.metadata.apply(lambda d: d['runnerId'])
-        games.drop('metadata', axis=1, inplace=True)
-        games.set_index('runnerId', inplace=True)
-        return games
