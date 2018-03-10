@@ -138,10 +138,12 @@ class BetSet(object):
         odds_index_cols = ['eventName', 'sortPriority',
                            'runnerName', 'external_id']
         odds = runners\
+            .astype({'price': float})\
             .groupby(odds_index_cols)\
-            .agg({'price': ['min', 'max']})\
+            .agg({'price': ['min', 'max', 'std', 'mean']})\
             .sort_index()
         odds.columns = odds.columns.droplevel(0)
+        odds.columns = ['price_{}'.format(c) for c in odds.columns]
         self.odds = odds
         self.runners = runners
 

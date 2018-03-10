@@ -77,6 +77,7 @@ class GameSetModel(object):
             .astype({'external_id': str})\
             .set_index('external_id')\
             .join(predictions)
+        table['E(r)'] = table['pred'] * table['price_max']
         self.prediction_table = table
 
     def get_prediction_table(self, refit=False):
