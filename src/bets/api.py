@@ -1,9 +1,12 @@
 import json
 import time
+import difflib as diff
 import pprint as pp
+import regex as re
 from copy import deepcopy
 from betfairlightweight import filters as fi
 from datetime import datetime
+from functools import partial
 from numpy import nan
 from numpy.random import choice
 from pandas import DataFrame, Series, concat, merge, read_csv
@@ -62,7 +65,8 @@ class BetsAPI(object):
     book_json_cols = ['runners']
 
     def __init__(self, client, allow_local_load=True,
-                 league_name='NCAAB', bet_type='MATCH_ODDS', currency='EUR'):
+                 league_name='NCAAB', bet_type='MATCH_ODDS', currency='EUR',
+                 name_to_id_path='data/Teams.csv'):
         """
             Notes:
                 * `league` corresponds to `competition` in the Betfair API
@@ -73,6 +77,7 @@ class BetsAPI(object):
         self.client = client
         self.currency = currency
         self.league_name = league_name
+        self.name_to_id_path = name_to_id_path
 
         loaded = False
         if allow_local_load:
@@ -109,12 +114,27 @@ class BetsAPI(object):
         prices = expand_dict_value_col(runners['ex'])
         back = expand_dict_value_col(prices['availableToBack'])
         lay = expand_dict_value_col(prices['availableToLay'])
-        self.runners = runners_cat\
+        runners = runners_cat\
             .join(descriptions)\
             .join(events)\
-            .join(back, how='left', on='runnerId')\
-            .join(lay, how='left', on='runnerId',
-                  lsuffix='_back', rsuffix='_lay')
+            .join(concat([back, lay]), how='left', on='runnerId')
+        if self.name_to_id_path:
+            name2id = read_csv(self.name_to_id_path)
+            name_col = next(c for c in name2id.columns
+                            if re.search('name', c.lower()))
+            id_col = next(c for c in name2id.columns
+                          if re.search('id', c.lower()))
+            ext_teams = name2id[name_col].values
+            get_ext_name = partial(diff.get_close_matches,
+                                   possibilities=ext_teams, n=1, cutoff=.01)
+            runners['external_name'] = runners['runnerName']\
+                .apply(lambda n: get_ext_name(n)[0])
+            runners = merge(runners, name2id,
+                            left_on=['external_name'], right_on=[name_col],
+                            how='left')
+            runners.rename(columns={id_col: 'external_id'}, inplace=True)
+
+        self.runners = runners
 
     def save_data(self):
         mkt_book = deepcopy(self.mkt_book)
