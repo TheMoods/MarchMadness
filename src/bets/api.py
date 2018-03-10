@@ -4,6 +4,7 @@ import pprint as pp
 from copy import deepcopy
 from betfairlightweight import filters as fi
 from datetime import datetime
+from numpy import nan
 from numpy.random import choice
 from pandas import DataFrame, Series, concat, merge, read_csv
 
@@ -13,20 +14,38 @@ def expand_dict_value_col(c):
     Takes a pandas series of dicts or lists of dicts
     and expands the first level of contained values into a new dataframe.
     Works only with single index at the moment.
+    Note: Also clears any missing values out and removes those rows
     """
+    c = c.apply(lambda v: nan if not v else v).dropna()
     assert len(c.index.names) == 1
     if type(c.iloc[0]) == list:
-        df = concat([concat([Series({**e, 'index': i}) for e in r], axis=1)
-                    for i, r in c.iteritems()],
-                    axis=1).transpose()
+        df = concat(
+            [concat([Series({**e, c.index.names[0]: i}) for e in r],
+                    axis=1) for i, r in c.iteritems()],
+            axis=1).transpose()
     elif type(c.iloc[0]) == dict:
-        df = concat([Series({**e, 'index': i}) for i, e in c.iteritems()],
-                    axis=1).transpose()
+        df = concat(
+            [Series({**e, c.index.names[0]: i}) for i, e in c.iteritems()],
+            axis=1).transpose()
     else:
         raise Exception('Please pass a dict or list of dicts, not {}'
                         .format(type(c.iloc[0])))
 
-    df.set_index('index', inplace=True)
+    df.set_index(c.index.names[0], inplace=True)
+    return df
+
+
+def dump_json_cols(df, cols):
+    for col in cols:
+        df[col] = df[col].apply(json.dumps)
+
+    return df
+
+
+def load_json_cols(df, cols):
+    for col in cols:
+        df[col] = df[col].apply(json.loads)
+
     return df
 
 
@@ -39,8 +58,10 @@ class BetsAPI(object):
     match_projection = 'NO_ROLLUP'
     order_projection = 'ALL'
     price_projection = {'priceData': ['EX_BEST_OFFERS']}
+    cat_json_cols = ['runners', 'description', 'event']
+    book_json_cols = ['runners']
 
-    def __init__(self, client, allow_reload=True,
+    def __init__(self, client, allow_local_load=True,
                  league_name='NCAAB', bet_type='MATCH_ODDS', currency='EUR'):
         """
             Notes:
@@ -54,7 +75,7 @@ class BetsAPI(object):
         self.league_name = league_name
 
         loaded = False
-        if allow_reload:
+        if allow_local_load:
             loaded = self.load_last_data()
         if not loaded:
             self.request_data()
@@ -73,41 +94,55 @@ class BetsAPI(object):
             time.sleep(tick)
 
     def build_secondary_tables(self):
-        runners = expand_dict_value_col(self.mkt_cat['runners'])
-        runners['runnerId'] = runners.metadata.apply(lambda d: d['runnerId'])
-        runners.drop('metadata', axis=1, inplace=True)
-        self.runners = runners
-
         descriptions = expand_dict_value_col(self.mkt_cat['description'])
-        self.descriptions = descriptions
-
-    def load_last_data(self):
-        try:
-            self.mkt_book = read_csv(
-                'data/mkt_book_{league_name}_{bet_type}_{currency}.csv'
-                .format(**vars(self)),
-                index_col='marketId')
-            self.mkt_book.runners = self.mkt_book.runners.apply(json.loads)
-            self.mkt_cat = read_csv(
-                'data/mkt_cat_{league_name}_{bet_type}_{currency}.csv'
-                .format(**vars(self)),
-                index_col='marketId')
-            self.mkt_cat.runners = self.mkt_cat.runners.apply(json.loads)
-            return True
-        except FileNotFoundError:
-            return False
+        events = expand_dict_value_col(self.mkt_cat['event'])
+        events.rename(columns={'id': 'eventId', 'name': 'eventName'},
+                      inplace=True)
+        runners_cat = expand_dict_value_col(self.mkt_cat['runners'])
+        runners_cat['runnerId'] = runners_cat.metadata\
+            .apply(lambda d: d['runnerId'])
+        runners_cat.drop('metadata', axis=1, inplace=True)
+        runners_book = expand_dict_value_col(self.mkt_book['runners'])
+        runners = merge(runners_cat, runners_book,
+                        on=['selectionId', 'handicap'])
+        runners.set_index('runnerId', inplace=True)
+        prices = expand_dict_value_col(runners['ex'])
+        back = expand_dict_value_col(prices['availableToBack'])
+        lay = expand_dict_value_col(prices['availableToLay'])
+        self.runners = runners_cat\
+            .join(descriptions)\
+            .join(events)\
+            .join(back, how='left', on='runnerId')\
+            .join(lay, how='left', on='runnerId',
+                  lsuffix='_back', rsuffix='_lay')
 
     def save_data(self):
         mkt_book = deepcopy(self.mkt_book)
-        mkt_book.runners = mkt_book.runners.apply(json.dumps)
+        mkt_book = dump_json_cols(mkt_book, self.book_json_cols)
         mkt_book.to_csv(
             'data/mkt_book_{league_name}_{bet_type}_{currency}.csv'
             .format(**vars(self)))
         mkt_cat = deepcopy(self.mkt_cat)
-        mkt_cat.runners = mkt_cat.runners.apply(json.dumps)
+        mkt_cat = dump_json_cols(mkt_cat, self.cat_json_cols)
         mkt_cat.to_csv(
             'data/mkt_cat_{league_name}_{bet_type}_{currency}.csv'
             .format(**vars(self)))
+
+    def load_last_data(self):
+        try:
+            mkt_book = read_csv(
+                'data/mkt_book_{league_name}_{bet_type}_{currency}.csv'
+                .format(**vars(self)),
+                index_col='marketId')
+            self.mkt_book = load_json_cols(mkt_book, self.book_json_cols)
+            mkt_cat = read_csv(
+                'data/mkt_cat_{league_name}_{bet_type}_{currency}.csv'
+                .format(**vars(self)),
+                index_col='marketId')
+            self.mkt_cat = load_json_cols(mkt_cat, self.cat_json_cols)
+            return True
+        except FileNotFoundError:
+            return False
 
     def request_data(self):
         self.client.login()
