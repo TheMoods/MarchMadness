@@ -6,10 +6,8 @@ from pandas import DataFrame
 from sklearn.metrics import log_loss
 from sklearn.model_selection import KFold
 from src.utils import load_data_template
-from src.features.feature import Feature
-from src.features.games import GameFeatures
-from src.features.games_detailed import GameDetailedFeatures
-from src.features.seeds import SeedFeatures
+from src.features import GameFeatures, GameDetailedFeatures,\
+    SeedFeatures, EnsembleFeatures
 from xgboost import XGBClassifier
 
 
@@ -72,6 +70,8 @@ class GameModel(object):
         self.fit_features = data\
             .drop(self.drop_for_features, axis=1)
         self.fit_targets = deepcopy(data[self.target_cols])
+        print('Fit Features Loaded: {}'
+              .format(self.fit_features.shape))
 
     def load_pred_features(self):
         data = self.feature_pipeline(self.pred_data_temp)
@@ -79,6 +79,8 @@ class GameModel(object):
             .drop(self.drop_for_features, axis=1)
         self.pred_targets = deepcopy(data[self.target_cols])
         self.pred_targets.loc[:, 'a_win'] = 'not_predicted'
+        print('Pred Features Loaded: {}'
+              .format(self.pred_features.shape))
 
     def load_data(self):
         self.load_fit_features()
