@@ -52,7 +52,7 @@ def load_json_cols(df, cols):
     return df
 
 
-class BetsAPI(object):
+class BetSet(object):
     market_projection = [
         'RUNNER_METADATA', 'MARKET_DESCRIPTION',
         'EVENT', 'COMPETITION',
@@ -133,13 +133,16 @@ class BetsAPI(object):
                             left_on=['external_name'], right_on=[name_col],
                             how='left')
             runners.rename(columns={id_col: 'external_id'}, inplace=True)
+            assert runners['external_name'].isnull().sum() == 0
 
         odds_index_cols = ['eventName', 'sortPriority',
                            'runnerName', 'external_id']
-        self.odds = runners\
+        odds = runners\
             .groupby(odds_index_cols)\
             .agg({'price': ['min', 'max']})\
             .sort_index()
+        odds.columns = odds.columns.droplevel(0)
+        self.odds = odds
         self.runners = runners
 
     def save_data(self):
