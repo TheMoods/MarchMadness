@@ -134,6 +134,12 @@ class BetsAPI(object):
                             how='left')
             runners.rename(columns={id_col: 'external_id'}, inplace=True)
 
+        odds_index_cols = ['eventName', 'sortPriority',
+                           'runnerName', 'external_id']
+        self.odds = runners\
+            .groupby(odds_index_cols)\
+            .agg({'price': ['min', 'max']})\
+            .sort_index()
         self.runners = runners
 
     def save_data(self):
