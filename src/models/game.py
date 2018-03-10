@@ -47,6 +47,23 @@ class GameModel(object):
                               per_game=True,
                               combine='subtract',
                               fillna=0)
+        data = game_feat\
+            .per_team_wrapper(data,
+                              game_feat.games_won_in_tourney_against_opponent,
+                              per_game=True,
+                              combine='subtract',
+                              fillna=0)
+        game_detail_feat = GameDetailedFeatures(default_lags=3)
+        data = game_detail_feat\
+            .per_team_wrapper(data,
+                              game_detail_feat.detail_features_by_game,
+                              per_day=True,
+                              combine='subtract')
+        seed_feat = SeedFeatures(default_lags=0)
+        data = seed_feat.per_team_wrapper(data,
+                                          seed_feat.team_seeds,
+                                          combine='subtract',
+                                          fillna=0)
         return data
 
     def load_fit_features(self):
@@ -76,7 +93,7 @@ class GameModel(object):
         self.pred_targets['b_win'] = pred[:, 0]
         self.pred_targets['a_win'] = pred[:, 1]
 
-    def cross_validate(self, n=3, n_splits=3, show_hist=False,
+    def cross_validate(self, n=1, n_splits=3, show_hist=False,
                        estimator_params={}):
         X = self.fit_features
         y = self.fit_targets
