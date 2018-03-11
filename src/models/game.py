@@ -57,11 +57,12 @@ class GameModel(object):
                               game_detail_feat.detail_features_by_game,
                               per_day=True,
                               combine='subtract')
-        seed_feat = SeedFeatures(default_lags=0)
+        seed_feat = SeedFeatures()
         data = seed_feat.per_team_wrapper(data,
                                           seed_feat.team_seeds,
                                           combine='subtract',
                                           fillna=0)
+        data.dropna(inplace=True)
         return data
 
     def load_fit_features(self):
