@@ -11,7 +11,7 @@ class Feature(object):
 
     def per_team_wrapper(self, df, feature_func,
                          per_game=False, per_day=False,
-                         fillna=None, combine=None, **kw_args):
+                         combine=None, **kw_args):
         new_df = cp.deepcopy(df)
         for team, opponent in [('team_a', 'team_b'), ('team_b', 'team_a')]:
             if per_game:
@@ -38,9 +38,6 @@ class Feature(object):
 
             new_df.drop(a_cols, axis=1, inplace=True)
             new_df.drop(b_cols, axis=1, inplace=True)
-
-        if fillna is not None:
-            new_df.fillna(fillna, inplace=True)
 
         new_df['a_win'] = df['a_win']
         return new_df

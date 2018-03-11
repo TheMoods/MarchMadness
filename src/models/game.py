@@ -32,35 +32,32 @@ class GameModel(object):
         data = game_feat\
             .per_team_wrapper(data,
                               game_feat.last_games_won_in_season,
-                              combine='subtract',
-                              fillna=0)
+                              combine='subtract').fillna(0)
         data = game_feat\
             .per_team_wrapper(data,
                               game_feat.last_games_won_in_tourney,
-                              combine='subtract',
-                              fillna=0)
+                              combine='subtract').fillna(0)
         data = game_feat\
             .per_team_wrapper(data,
                               game_feat.last_games_won_against_opponent,
                               per_game=True,
-                              combine='subtract',
-                              fillna=0)
+                              combine='subtract').fillna(0)
         data = game_feat\
             .per_team_wrapper(data,
                               game_feat.games_won_in_tourney_against_opponent,
                               per_game=True,
-                              combine='subtract',
-                              fillna=0)
+                              combine='subtract').fillna(0)
         game_detail_feat = GameDetailedFeatures(default_lags=3)
         data = game_detail_feat\
             .per_team_wrapper(data,
                               game_detail_feat.detail_features_by_game,
                               per_day=True,
-                              combine='subtract')
+                              combine='subtract').fillna(0)
         seed_feat = SeedFeatures()
-        data = seed_feat.per_team_wrapper(data,
-                                          seed_feat.team_seeds,
-                                          combine='subtract')
+        data = seed_feat\
+            .per_team_wrapper(data,
+                              seed_feat.team_seeds,
+                              combine='subtract').fillna(0)
         data.dropna(inplace=True)
         return data
 
@@ -130,7 +127,7 @@ class GameModel(object):
                 plt.figure(figsize=(20, 4))
                 # plt.xlim([0, .25])
                 plt.hist(cv_results[c].values,
-                         bins=ceil(n / 25).astype(int))
+                         bins=ceil(n / 7).astype(int))
                 plt.show()
 
         self.cv_results = cv_results
