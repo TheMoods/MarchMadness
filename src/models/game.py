@@ -60,8 +60,7 @@ class GameModel(object):
         seed_feat = SeedFeatures()
         data = seed_feat.per_team_wrapper(data,
                                           seed_feat.team_seeds,
-                                          combine='subtract',
-                                          fillna=0)
+                                          combine='subtract')
         data.dropna(inplace=True)
         return data
 
