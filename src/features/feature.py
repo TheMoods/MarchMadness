@@ -28,7 +28,7 @@ class Feature(object):
                            how='left')
 
         if combine is not None:
-            comb_cols = [c.replace('team_b', 'team_combined')
+            comb_cols = [c.replace('team_b', 'combined')
                          for c in merge_df.columns]
             b_cols = merge_df.columns
             a_cols = [c.replace('team_b', 'team_a') for c in merge_df.columns]
@@ -48,7 +48,9 @@ class Feature(object):
     def lag_features(self, df, drop_unlagged,
                      fill_missing_dates=False,
                      missing_date_fill_method='ffill',
-                     missing_date_min_max=None,
+                     time_indices={
+                         'Season': [1, 13]
+                     },
                      lags=None):
         if lags is None:
             lags = self.default_lags

@@ -1,0 +1,53 @@
+from copy import deepcopy
+from pandas import concat, read_csv
+from src.features.feature import Feature
+from src.features.games import GameFeatures
+
+
+class GameDetailedFeatures(GameFeatures):
+    detail_feature_cols = ['{}FGM', '{}FGA', '{}FGM3', '{}FGA3',
+                           '{}FTM', '{}FTA', '{}OR', '{}DR',
+                           '{}Ast', '{}TO', '{}Stl', '{}Blk', '{}PF']
+
+    def __init__(self, default_lags=1):
+        super().__init__()
+        self.default_lags = default_lags
+        self.season_games = self\
+            .load_game_data('RegularSeasonDetailedResults.csv')
+        self.tourney_games = self\
+            .load_game_data('NCAATourneyDetailedResults.csv')
+        self.all_games = concat([
+            self.season_games,
+            self.tourney_games
+        ])
+
+    def detail_features_by_game(self, df, team):
+        games = self.all_games.set_index(['WTeamID', 'LTeamID'])
+        time_cols = ['Season', 'DayNum']
+        winner_cols = [c.format('W') for c in self.detail_feature_cols]
+        winner_features = deepcopy(games[winner_cols + time_cols])
+        winner_features.columns = [c[1:] + '_' + team
+                                   for c in winner_cols] + time_cols
+        winner_features.index = winner_features.index.droplevel(1)
+        looser_cols = [c.format('L') for c in self.detail_feature_cols]
+        looser_features = deepcopy(games[looser_cols + time_cols])
+        looser_features.columns = [c[1:] + '_' + team
+                                   for c in looser_cols] + time_cols
+        looser_features.index = looser_features.index.droplevel(0)
+        feats = concat([looser_features, winner_features])
+        feats.reset_index(inplace=True)
+        last_days = feats\
+            .groupby(['index', 'Season']).last().reset_index()
+        last_days['DayNum'] = 366
+        feats = \
+            concat([feats,
+                    last_days[last_days.Season == last_days.Season.max()]])\
+            .rename(columns={'index': 'team_id'})
+        feats.set_index(['team_id', 'Season', 'DayNum'], inplace=True)
+        feats = self.lag_features(feats,
+                                  drop_unlagged=True,
+                                  time_indices={
+                                      'Season': [2003, 2017],
+                                      'DayNum': [1, 366]
+                                  })
+        return feats

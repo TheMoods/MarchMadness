@@ -6,16 +6,16 @@ from src.features.games import GameFeatures
 
 class GameDetailedFeatures(GameFeatures):
     detail_feature_cols = ['{}FGM', '{}FGA', '{}FGM3', '{}FGA3',
-                           '{}FTM', '{}FTA', '{}OR', '{}DR', 
+                           '{}FTM', '{}FTA', '{}OR', '{}DR',
                            '{}Ast', '{}TO', '{}Stl', '{}Blk', '{}PF']
 
     def __init__(self, default_lags=1):
         super().__init__()
         self.default_lags = default_lags
         self.season_games = self\
-                .load_game_data('RegularSeasonDetailedResults.csv')
+            .load_game_data('RegularSeasonDetailedResults.csv')
         self.tourney_games = self\
-                .load_game_data('NCAATourneyDetailedResults.csv')
+            .load_game_data('NCAATourneyDetailedResults.csv')
         self.all_games = pd.concat([
             self.season_games,
             self.tourney_games

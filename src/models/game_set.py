@@ -50,7 +50,7 @@ class GameSetModel(object):
                       league_name='NCAAB',
                       bet_type='MATCH_ODDS',
                       currency='EUR',
-                      allow_local_load=False)
+                      allow_local_load=True)
 
     def get_model(self):
         return GameModel(pred_data_temp=self.get_pred_data_temp())

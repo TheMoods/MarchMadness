@@ -130,8 +130,8 @@ class GameModel(object):
             for c in cv_results.columns:
                 plt.figure(figsize=(20, 4))
                 # plt.xlim([0, .25])
-                plt.hist(self.cv_results[c].values,
-                         bins=ceil(n / 10).astype(int))
+                plt.hist(cv_results[c].values,
+                         bins=ceil(n / 25).astype(int))
                 plt.show()
 
         self.cv_results = cv_results
