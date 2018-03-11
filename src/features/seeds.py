@@ -5,9 +5,8 @@ from src.features.feature import Feature
 
 class SeedFeatures(Feature):
 
-    def __init__(self, default_lags=3):
+    def __init__(self):
         super().__init__()
-        self.default_lags = default_lags
         self.seeds = self\
             .load_seeds('NCAATourneySeeds.csv')
 
@@ -26,7 +25,4 @@ class SeedFeatures(Feature):
             .rename(columns={
                 'Seed': 'seed_{}'.format(team)
             })
-        team_seeds = self\
-            .lag_features(team_seeds,
-                          drop_unlagged=False)
         return team_seeds
