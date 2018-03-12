@@ -26,7 +26,7 @@ class CoachFeatures(Feature):
 
     def coach_func(self, df, team):
         coaches = self\
-                .coaches.set_index(['TeamID', 'Season'])\
+                .coaches.groupby(['TeamID', 'Season']).first()\
                 .rename(columns={
                     'CoachName':'coach_{}'.format(team)
                     })
@@ -35,7 +35,7 @@ class CoachFeatures(Feature):
        #         .lag_features(coaches,
        #         drop_unlagged = False)
        # print(coaches)
-       # return coaches
+        return coaches
     # Unfinished. TODO: I need to count the years that a coach has been on a team.
     def coach_years(self, df, team):
         coach_years = self\
