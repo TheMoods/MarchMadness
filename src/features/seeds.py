@@ -8,7 +8,7 @@ class SeedFeatures(Feature):
     def __init__(self):
         super().__init__()
         self.seeds = self\
-            .load_seeds('NCAATourneySeeds.csv')
+            .load_seeds('NCAATourneySeeds_SampleTourney2018.csv')
 
     def load_seeds(self, path):
         seeds = pd.read_csv('{}{}'.format(self.data_path, path))
