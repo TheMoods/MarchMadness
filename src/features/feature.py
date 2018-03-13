@@ -59,7 +59,7 @@ class Feature(object):
         group_cols = df.index.names[:-1]
         if fill_missing_dates:
             time_range = np\
-                .arange(*missing_date_min_max)
+                .arange(*time_indices[list(time_indices)[0]])
             time_index = MultiIndex.from_product([
                 *df.index.levels[:-1],
                 time_range
