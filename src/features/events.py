@@ -6,7 +6,7 @@ from src.features.feature import Feature
 
 class EventFeatures(Feature):
 
-    def __init__(self, default_lags=3, rows=1000):
+    def __init__(self, default_lags=3, rows=None):
         super().__init__()
         self.default_lags = default_lags
         self.rows = rows
@@ -32,7 +32,7 @@ class EventFeatures(Feature):
         events = pd.concat([events, ohe_events], axis=1)
         events = events.astype({
             'EventTeamID': str,
-            'Season': str
+            'Season': int
         })
         return events
 
@@ -40,5 +40,6 @@ class EventFeatures(Feature):
         steals = self.events.groupby(['EventTeamID', 'Season'])['steal'].sum()
         steals = pd.DataFrame(steals).rename(
                 columns={'steal': '{}_{}'.format(name, team)})
+        return steals
         steals = self.lag_features(steals, drop_unlagged=True)
         return steals
