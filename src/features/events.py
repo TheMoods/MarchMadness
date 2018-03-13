@@ -11,6 +11,12 @@ class EventFeatures(Feature):
         self.default_lags = default_lags
         self.rows = rows
         self.events = self.load_event_data()
+        non_event_columns = ['EventID', 'Season', 'DayNum',
+            'WPoints', 'LPoints', 'WTeamID', 'LTeamID',
+            'ElapsedSeconds', 'EventTeamID',
+            'EventPlayerID', 'EventType', 'EventNum']
+        self.event_columns = [col for col in self.events.columns
+                              if col not in non_event_columns]
 
     def load_event_data(self):
         file_names = [file_ for file_ in os.listdir('data/')
@@ -32,23 +38,26 @@ class EventFeatures(Feature):
         events = pd.concat([events, ohe_events], axis=1)
         events = events.astype({
             'EventTeamID': str,
-            'Season': int
+            'Season': int,
         })
         return events
 
-    def steals_in_season(self, df, team, name='steals_in_season'):
-        steals = self.events.groupby(['EventTeamID', 'Season'])['steal'].sum()
-        steals = pd.DataFrame(steals).rename(
-                columns={'steal': '{}_{}'.format(name, team)})
-        return steals
-        steals = self.lag_features(steals, drop_unlagged=True)
-        return steals
+    def total_events_in_season(self, df, team, name='total'):
+        total_events = self.events\
+                .groupby(['EventTeamID', 'Season', 'DayNum']).sum()\
+                .groupby(['EventTeamID', 'Season'])[self.event_columns].sum()
+        total_events = pd.DataFrame(total_events).rename(
+            columns={key: '{}_{}_{}'.format(key, name, team) 
+                     for key in self.event_columns})
+        total_events = self.lag_features(total_events, drop_unlagged=True)
+        return total_events
 
-    def turnovers_in_season(self, df, team, name='turnovers_in_season'):
-        turnovers = self.events\
-            .groupby(['EventTeamID', 'Season'])['turnover'].sum()
-        turnovers = pd.DataFrame(turnovers).rename(
-                columns={'turnover': '{}_{}'.format(name, team)})
-        return turnovers
-        turnovers = self.lag_features(turnovers, drop_unlagged=True)
-        return turnovers
+    def average_events_in_season(self, df, team, name='avg'):
+        total_events = self.events\
+                .groupby(['EventTeamID', 'Season', 'DayNum']).sum()\
+                .groupby(['EventTeamID', 'Season'])[self.event_columns].mean()
+        total_events = pd.DataFrame(total_events).rename(
+            columns={key: '{}_{}_{}'.format(key, name, team)
+                     for key in self.event_columns})
+        total_events = self.lag_features(total_events, drop_unlagged=True)
+        return total_events
