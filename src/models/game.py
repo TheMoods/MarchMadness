@@ -36,22 +36,7 @@ class GameModel(object):
         seed_feat = SeedFeatures()
         data = seed_feat.per_team_wrapper(
             data, seed_feat.team_seeds,
-            per_game=False, per_day=False, combine='subtract')
-        print(data.shape)
-
-        print('-- Coach --')
-        coach_feat = CoachFeatures(default_lags=0)
-        data = coach_feat.per_team_wrapper(
-            data, coach_feat.coach_func,
             per_game=False, per_day=False)
-        print(data.shape)
-
-        print('-- Conferences --')
-        conf_feat = ConferenceFeatures(default_lags=0)
-        data = conf_feat.per_team_wrapper(
-            data, conf_feat.conference_games,
-            per_game=False, per_day=False)
-        data.fillna(0, inplace=True)
         print(data.shape)
 
         print('-- Events --')
@@ -84,13 +69,13 @@ class GameModel(object):
         print(data.shape)
 
         print('-- Rankings --')
-        # rank_feat = RankingFeatures(default_lags=0)
-        # data = rank_feat.per_team_wrapper(
-        #     data, rank_feat.pca_variables_rankings,
-        #     per_game=False, per_day=False)
-        # data = rank_feat.per_team_wrapper(
-        #     data, rank_feat.elos_season,
-        #     per_game=False, per_day=False)
+        rank_feat = RankingFeatures(default_lags=0)
+        data = rank_feat.per_team_wrapper(
+            data, rank_feat.pca_variables_rankings,
+            per_game=False, per_day=False)
+        data = rank_feat.per_team_wrapper(
+            data, rank_feat.elos_season,
+            per_game=False, per_day=False)
         data.fillna(0, inplace=True)
         print(data.shape)
 
