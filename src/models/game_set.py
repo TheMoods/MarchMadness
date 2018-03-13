@@ -3,7 +3,7 @@ from betfairlightweight import APIClient
 from numpy import nan
 from pandas import Series, concat
 from src.bets.api import BetSet
-from src.models.game import GameModel
+from src.models.game import NCAAModel4Bets
 
 
 class GameSetModel(object):
@@ -32,9 +32,9 @@ class GameSetModel(object):
         table['E(r)'] = table['pred'] * table['price_max']
         self.prediction_table = table
 
-    def get_prediction_table(self, refit=False):
+    def get_prediction_table(self, refit=False, ep={}):
         if refit or not hasattr(self, 'prediction_table'):
-            self.load_prediction_table()
+            self.load_prediction_table(ep=ep)
 
         return self.prediction_table
 
@@ -52,8 +52,8 @@ class GameSetModel(object):
                       currency='EUR',
                       request_refresh=True)
 
-    def get_model(self):
-        return GameModel(pred_data_temp=self.get_pred_data_temp())
+    def get_model(self, **kw_args):
+        return NCAAModel4Bets(pred_data_temp=self.get_pred_data_temp())
 
     def get_pred_data_temp(self):
         pred_temp = self.bet_set.runners\
@@ -68,9 +68,9 @@ class GameSetModel(object):
             pred_temp,
             pred_temp.external_id.apply(get_team_cols)
         ], axis=1)
-        pred_temp['Season'] = 2017
+        pred_temp['Season'] = 2018
         pred_temp['DayNum'] = 366
-        pred_temp['a_win'] = nan
+        pred_temp['a_win'] = 'not predicted'
         pred_temp['game_set'] = 0
         pred_temp['in_target'] = True
         pred_temp.reset_index(inplace=True)
