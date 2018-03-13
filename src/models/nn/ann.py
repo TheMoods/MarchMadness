@@ -1,5 +1,7 @@
+import time
+import numpy as np
 import tensorflow as tf
-from sklearn.model_selection import KFold
+from src.models.nn.network import Network
 
 
 class ANN(object):
@@ -14,126 +16,80 @@ class ANN(object):
         self.num_epochs = num_epochs
         self.num_classes = 2
         self.num_layers = len(hidden_units)
-        self.create_network()
+        self.network = Network(input_dim, hidden_units, dropout, eta)
         self.sess = None
 
     def train(self, X, Y, X_eval=None, Y_eval=None, verbose=False):
         init = tf.global_variables_initializer()
-        with tf.Session() as sess:
-            self.sess = sess
-            self.sess.run(init)
-            # Training cycle
-            for epoch in range(self.num_epochs):
-                avg_loss = .0
-                num_batches = int(X.shape[0]/self.batch_size)
-                for i in range(num_batches):
-                    s_ix, f_ix = (i*self.batch_size), (i+1)*self.batch_size
-                    batch_X, batch_Y = X[s_ix:f_ix], Y[s_ix:f_ix]
-                    nodes = [self.probs, self.train_op, self.loss]
-                    feed_dict = {self.X: batch_X, self.Y: batch_Y,
-                                 self.keep_prob: 1 - self.dropout}  
-                    probs, _, loss = sess.run(nodes, feed_dict=feed_dict)
-                    avg_loss += loss/len(batch_X)
+        self.saver = tf.train.Saver()
+        self.sess = tf.Session()
+        self.sess.run(init)
+        # Training cycle
+        for epoch in range(self.num_epochs):
+            stime = time.time()
+            avg_loss = list()
+            num_batches = int(X.shape[0]/self.batch_size)
+            for i in range(num_batches):
+                s_ix, f_ix = (i*self.batch_size), (i+1)*self.batch_size
+                batch_X, batch_Y = X[s_ix:f_ix], Y[s_ix:f_ix]
+                nodes = [
+                    self.network.probs, 
+                    self.network.train_op,
+                    self.network.loss
+                ]
+                feed_dict = {self.network.X: batch_X, self.network.Y: batch_Y,
+                             self.network.keep_prob: 1 - self.dropout}  
+                probs, _, loss = self.sess.run(nodes, feed_dict=feed_dict)
+                avg_loss.append(loss)
+                epoch_time = (time.time() - stime)
+                # Compute average loss
+            # Display logs per epoch step
+            if epoch % 5 == 0:
+                if X_eval is not None:
+                    print(probs[:5])
+                    eval_loss, probs_test = self.validate(X_eval, Y_eval, 
+                                                          1-self.dropout)
+                    print(probs_test[:5])
+                    if verbose:
+                        print("Epoch:", '%03d' % (epoch),
+                              "train_loss={:.3f}".format(np.mean(avg_loss)),
+                              "eval_loss={:.3f}".format(eval_loss),
+                              "--- time per epoch={:.2f} seconds"\
+                                      .format(epoch_time))
+                else:
+                    if verbose:
+                        print("Epoch:", '%03d' % (epoch),
+                              "train_loss={:.3f}".format(avg_loss))
+        self.saver.save(self.sess, "src/saved_models/model.ckpt")
+        return avg_loss, eval_loss
 
-                    # Compute average loss
-                # Display logs per epoch step
-                if epoch % 5 == 0:
-                    if X_eval is not None:
-                        eval_loss = self.validate(X_eval, Y_eval)
-                        if verbose:
-                            print("Epoch:", '%03d' % (epoch),
-                                  "train_loss={:.3f}".format(avg_loss),
-                                  "eval_loss={:.3f}".format(eval_loss))
-                    else:
-                        if verbose:
-                            print("Epoch:", '%03d' % (epoch),
-                                  "train_loss={:.3f}".format(avg_loss))
-
-            return avg_loss, eval_loss
-
-            '''
-            # Test model
-            pred = tf.nn.softmax(logits)  # Apply softmax to logits
-            correct_prediction = tf.equal(tf.argmax(pred, 1), tf.argmax(Y, 1))
-            # Calculate accuracy
-            accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-        print("Accuracy:", accuracy.eval({X: mnist.test.images, Y: mnist.test.labels})):
-            '''
-    
-    def validate(self, X, Y):
-        nodes = [self.loss]
-        feed_dict = {self.X: X, self.Y: Y}
-        eval_loss = self.sess.run(nodes, feed_dict=feed_dict)
-        return eval_loss[0]
-
-    def create_network(self):
-        tf.reset_default_graph()
-        self.X = tf.placeholder(tf.float32, [None, self.input_dim])
-        self.Y = tf.placeholder(tf.int32, [None])
-        self.keep_prob = tf.placeholder_with_default(1.0, shape=())
-
-        self.weights = self.define_weights()
-        self.biases = self.define_biases()
-        self.layers = self.multilayer_perceptron()
-        self.output = tf.matmul(
-                self.layers['l_'+str(self.num_layers-1)], self.weights['w_out'])+\
-                self.biases['b_out']
-        self.probs = tf.sigmoid(self.output[:, 1])
-        self.loss = tf.losses.log_loss(self.Y, self.probs)
-
-        self.optimizer = tf.train.AdamOptimizer(learning_rate=self.learning_rate)
-        self.train_op = self.optimizer.minimize(self.loss)
-
-    def define_weights(self):
-        weights = {
-            'w_0': tf.get_variable('w_0', [self.input_dim, self.hidden_units[0]],
-                initializer=tf.contrib.layers.xavier_initializer())
+    def validate(self, X, Y, k_p=1):
+        nodes = [self.network.loss, self.network.probs]
+        feed_dict = {
+            self.network.X: X,
+            self.network.Y: Y,
+            self.network.keep_prob: k_p
         }
-        if self.num_layers > 1:
-            for i, u in enumerate(self.hidden_units[1:]):
-                dim1 = weights['w_'+str(i)].shape[1] 
-                dim2 = u
-                weights['w_'+str(i+1)] = tf.get_variable('w_'+str(i+1), [dim1, dim2],
-                        initializer=tf.contrib.layers.xavier_initializer()) 
+        eval_loss, probs = self.sess.run(nodes, feed_dict=feed_dict)
+        return eval_loss, probs
 
-            weights['w_out'] = tf.get_variable('w_out', [dim2, self.num_classes])
+    def predict(self, X, samples=None):
+        self.saver.restore(self.sess, "src/saved_models/model.ckpt")
+        if samples is None:
+            nodes = [self.network.output]
+            feed_dict = {self.network.X: X}
+            predictions = self.sess.run(nodes, feed_dict=feed_dict)
         else:
-            weights['w_out'] = tf.get_variable('w_out',
-                    [self.hidden_units[0], self.num_classes])
+            predictions = list()
+            for _ in range(samples):
+                nodes = [self.network.probs]
+                feed_dict = {
+                    self.network.X: X,
+                    self.network.keep_prob: 1 - self.network.dropout
+                }
+                preds = self.sess.run(nodes, feed_dict=feed_dict)[0]
+                predictions.append(preds)
 
-        return weights
+            predictions = np.column_stack((predictions))
 
-    def define_biases(self):
-        biases = {
-            'b_0': tf.get_variable('b_0', [1, self.hidden_units[0]],
-                initializer=tf.contrib.layers.xavier_initializer())
-        }
-        if self.num_layers > 1:
-            for i, u in enumerate(self.hidden_units[1:]):
-                dim1 = 1
-                dim2 = u
-                biases['b_'+str(i+1)] = tf.get_variable('b_'+str(i+1), [dim1, dim2],
-                    initializer=tf.contrib.layers.xavier_initializer()) 
-
-            biases['b_out'] = tf.get_variable('b_out',
-                    [1, self.num_classes])
-
-        else:
-            biases['b_out'] = tf.get_variable('b_out',
-                    [1, self.num_classes])
-        return biases
-
-    def multilayer_perceptron(self):
-        layers = {
-            'l_0': tf.matmul(self.X, self.weights['w_0']) + self.biases['b_0']
-        }
-        for i in range(self.num_layers-1):
-            layers['l_'+str(i+1)] = tf.nn.dropout(
-                    tf.nn.relu(tf.matmul(layers['l_'+str(i)],
-                               self.weights['w_'+str(i+1)])\
-                               + self.biases['b_'+str(i+1)]),
-                    self.keep_prob)
-        
-        return layers
-
-
+        return predictions
