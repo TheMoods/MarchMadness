@@ -32,12 +32,12 @@ class GameModel(object):
         print('Running Feature Pipeline')
         start = dt.now()
 
-        print('-- Seeds --')
-        seed_feat = SeedFeatures()
-        data = seed_feat.per_team_wrapper(
-            data, seed_feat.team_seeds,
-            per_game=False, per_day=False)
-        print(data.shape)
+#         print('-- Seeds --')
+#         seed_feat = SeedFeatures()
+#         data = seed_feat.per_team_wrapper(
+#             data, seed_feat.team_seeds,
+#             per_game=False, per_day=False)
+#         print(data.shape)
 
 #         print('-- Events --')
 #         event_feat = EventFeatures(default_lags=1)
@@ -48,20 +48,20 @@ class GameModel(object):
 #         data.fillna(0, inplace=True)
 #         print(data.shape)
 
-#         print('-- Game Features --')
-#         game_feat = GameFeatures()
-#         data = game_feat.per_team_wrapper(
-#             data, game_feat.last_games_won_in_season)
-#         data = game_feat.per_team_wrapper(
-#             data, game_feat.last_games_won_in_tourney)
-#         data = game_feat.per_team_wrapper(
-#             data, game_feat.last_games_won_against_opponent,
-#             per_game=True)
-#         data = game_feat.per_team_wrapper(
-#             data, game_feat.games_won_in_tourney_against_opponent,
-#             per_game=True)
-#         data.fillna(0, inplace=True)
-#         print(data.shape)
+        print('-- Game Features --')
+        game_feat = GameFeatures()
+        data = game_feat.per_team_wrapper(
+            data, game_feat.last_games_won_in_season)
+        data = game_feat.per_team_wrapper(
+            data, game_feat.last_games_won_in_tourney)
+        data = game_feat.per_team_wrapper(
+            data, game_feat.last_games_won_against_opponent,
+            per_game=True)
+        data = game_feat.per_team_wrapper(
+            data, game_feat.games_won_in_tourney_against_opponent,
+            per_game=True)
+        data.fillna(0, inplace=True)
+        print(data.shape)
 
 #         print('-- Game Detailed Features --')
 #         game_detail_feat = GameDetailedFeatures(default_lags=2)
