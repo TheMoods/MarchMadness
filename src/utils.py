@@ -1,4 +1,5 @@
 import pandas as pd
+from numpy import nan
 from sklearn.preprocessing import LabelEncoder
 
 

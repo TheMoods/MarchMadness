@@ -39,45 +39,45 @@ class GameModel(object):
             per_game=False, per_day=False)
         print(data.shape)
 
-        print('-- Events --')
-        event_feat = EventFeatures(default_lags=1)
-        data = event_feat.per_team_wrapper(
-            data, event_feat.steals_in_season)
-        data.fillna(0, inplace=True)
-        print(data.shape)
+#         print('-- Events --')
+#         event_feat = EventFeatures(default_lags=1)
+#         data = event_feat.per_team_wrapper(
+#             data, event_feat.steals_in_season)
+#         data.fillna(0, inplace=True)
+#         print(data.shape)
 
-        print('-- Game Features --')
-        game_feat = GameFeatures()
-        data = game_feat.per_team_wrapper(
-            data, game_feat.last_games_won_in_season)
-        data = game_feat.per_team_wrapper(
-            data, game_feat.last_games_won_in_tourney)
-        data = game_feat.per_team_wrapper(
-            data, game_feat.last_games_won_against_opponent,
-            per_game=True)
-        data = game_feat.per_team_wrapper(
-            data, game_feat.games_won_in_tourney_against_opponent,
-            per_game=True)
-        data.fillna(0, inplace=True)
-        print(data.shape)
+#         print('-- Game Features --')
+#         game_feat = GameFeatures()
+#         data = game_feat.per_team_wrapper(
+#             data, game_feat.last_games_won_in_season)
+#         data = game_feat.per_team_wrapper(
+#             data, game_feat.last_games_won_in_tourney)
+#         data = game_feat.per_team_wrapper(
+#             data, game_feat.last_games_won_against_opponent,
+#             per_game=True)
+#         data = game_feat.per_team_wrapper(
+#             data, game_feat.games_won_in_tourney_against_opponent,
+#             per_game=True)
+#         data.fillna(0, inplace=True)
+#         print(data.shape)
 
-        print('-- Game Detailed Features --')
-        game_detail_feat = GameDetailedFeatures(default_lags=2)
-        data = game_detail_feat.per_team_wrapper(
-            data, game_detail_feat.detail_features_by_game, per_day=True)
-        data.fillna(0, inplace=True)
-        print(data.shape)
+#         print('-- Game Detailed Features --')
+#         game_detail_feat = GameDetailedFeatures(default_lags=2)
+#         data = game_detail_feat.per_team_wrapper(
+#             data, game_detail_feat.detail_features_by_game, per_day=True)
+#         data.fillna(0, inplace=True)
+#         print(data.shape)
 
-        print('-- Rankings --')
-        rank_feat = RankingFeatures(default_lags=0)
-        data = rank_feat.per_team_wrapper(
-            data, rank_feat.pca_variables_rankings,
-            per_game=False, per_day=False)
-        data = rank_feat.per_team_wrapper(
-            data, rank_feat.elos_season,
-            per_game=False, per_day=False)
-        data.fillna(0, inplace=True)
-        print(data.shape)
+#         print('-- Rankings --')
+#         rank_feat = RankingFeatures(default_lags=0)
+#         data = rank_feat.per_team_wrapper(
+#             data, rank_feat.pca_variables_rankings,
+#             per_game=False, per_day=False)
+#         data = rank_feat.per_team_wrapper(
+#             data, rank_feat.elos_season,
+#             per_game=False, per_day=False)
+#         data.fillna(0, inplace=True)
+#         print(data.shape)
 
         print('Feature Pipeline Clock: {} Seconds'
               .format((dt.now() - start).seconds))
