@@ -3,9 +3,10 @@ import pandas as pd
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from src.features.feature import Feature
 
+
 class EventFeatures(Feature):
 
-    def __init__(self, default_lags=3, rows=1000):
+    def __init__(self, default_lags=3, rows=None):
         super().__init__()
         self.default_lags = default_lags
         self.rows = rows
@@ -60,7 +61,3 @@ class EventFeatures(Feature):
                      for key in self.event_columns})
         total_events = self.lag_features(total_events, drop_unlagged=True)
         return total_events
-
-
-
-

@@ -11,7 +11,7 @@ class Feature(object):
 
     def per_team_wrapper(self, df, feature_func,
                          per_game=False, per_day=False,
-                         fillna=None, combine=None, **kw_args):
+                         combine=None, **kw_args):
         new_df = cp.deepcopy(df)
         for team, opponent in [('team_a', 'team_b'), ('team_b', 'team_a')]:
             if per_game:
@@ -28,7 +28,7 @@ class Feature(object):
                            how='left')
 
         if combine is not None:
-            comb_cols = [c.replace('team_b', 'team_combined')
+            comb_cols = [c.replace('team_b', 'combined')
                          for c in merge_df.columns]
             b_cols = merge_df.columns
             a_cols = [c.replace('team_b', 'team_a') for c in merge_df.columns]
@@ -39,16 +39,15 @@ class Feature(object):
             new_df.drop(a_cols, axis=1, inplace=True)
             new_df.drop(b_cols, axis=1, inplace=True)
 
-        if fillna is not None:
-            new_df.fillna(fillna, inplace=True)
-
         new_df['a_win'] = df['a_win']
         return new_df
 
     def lag_features(self, df, drop_unlagged,
                      fill_missing_dates=False,
                      missing_date_fill_method='ffill',
-                     missing_date_min_max=None,
+                     time_indices={
+                         'Season': [1, 13]
+                     },
                      lags=None):
         if lags is None:
             lags = self.default_lags
@@ -60,7 +59,7 @@ class Feature(object):
         group_cols = df.index.names[:-1]
         if fill_missing_dates:
             time_range = np\
-                .arange(*missing_date_min_max)
+                .arange(*time_indices[list(time_indices)[0]])
             time_index = MultiIndex.from_product([
                 *df.index.levels[:-1],
                 time_range

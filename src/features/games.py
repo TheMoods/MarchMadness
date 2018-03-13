@@ -10,7 +10,7 @@ class GameFeatures(Feature):
         self.tourney_games = self\
             .load_game_data('NCAATourneyCompactResults.csv')
         self.season_games = self\
-            .load_game_data('RegularSeasonCompactResults.csv')
+            .load_game_data('RegularSeasonCompactResults_Prelim2018.csv')
         self.all_games = pd.concat([
             self.tourney_games, self.season_games
         ])
@@ -33,66 +33,72 @@ class GameFeatures(Feature):
 
     def games_won_in_season(self, df, team,
                             name='games_won_in_season'):
-        games_won_in_season = self.season_games\
+        feats = self.season_games\
             .groupby(['WTeamID', 'Season']).count()[['diff']]\
-            .rename(columns={'diff': '{}_{}'.format(name, team)})
-        games_won_in_season = self\
-            .lag_features(games_won_in_season,
+            .rename(columns={'diff': '{}_{}'.format(name, team)})\
+            .fillna(0)
+        feats = self\
+            .lag_features(feats,
                           drop_unlagged=False,
                           fill_missing_dates=True,
                           missing_date_fill_method=None,
                           missing_date_min_max=[1985, 2017])
-        return games_won_in_season
+        return feats
 
     def last_games_won_in_season(self, df, team):
         name = 'last_games_won_in_season'
-        last_games_won_in_season = self.season_games\
+        feats = self.season_games\
             .groupby(['WTeamID', 'Season']).count()[['diff']]\
-            .rename(columns={'diff': '{}_{}'.format(name, team)})
-        last_games_won_in_season = self\
-            .lag_features(last_games_won_in_season,
+            .rename(columns={'diff': '{}_{}'.format(name, team)})\
+            .fillna(0)
+        feats = self\
+            .lag_features(feats,
                           drop_unlagged=False)
-        return last_games_won_in_season
+        return feats
 
     def games_won_in_tourney(self, df, team,
                              name='games_won_in_tourney'):
-        games_won_in_tourney = self.tourney_games\
+        feats = self.tourney_games\
             .groupby(['WTeamID', 'Season']).count()[['LTeamID']]\
-            .rename(columns={'LTeamID': '{}_{}'.format(name, team)})
-        games_won_in_tourney = self\
-            .lag_features(games_won_in_tourney,
+            .rename(columns={'LTeamID': '{}_{}'.format(name, team)})\
+            .fillna(0)
+        feats = self\
+            .lag_features(feats,
                           drop_unlagged=True,
                           fill_missing_dates=True,
                           missing_date_fill_method=None,
                           missing_date_min_max=[1985, 2017])
-        return games_won_in_tourney
+        return feats
 
     def last_games_won_in_tourney(self, df, team):
         name = 'last_games_won_in_tourney'
-        last_games_won_in_tourney = self.tourney_games\
+        feats = self.tourney_games\
             .groupby(['WTeamID', 'Season']).count()[['LTeamID']]\
-            .rename(columns={'LTeamID': '{}_{}'.format(name, team)})
-        last_games_won_in_tourney = self\
-            .lag_features(last_games_won_in_tourney,
+            .rename(columns={'LTeamID': '{}_{}'.format(name, team)})\
+            .fillna(0)
+        feats = self\
+            .lag_features(feats,
                           drop_unlagged=True)
-        return last_games_won_in_tourney
+        return feats
 
     def last_games_won_against_opponent(self, df, team):
         name = 'last_games_won_in_year_against_opponent'
-        last_games_won__against_opponent = self.all_games\
+        feats = self.all_games\
             .groupby(['WTeamID', 'LTeamID', 'Season']).count()[['diff']]\
-            .rename(columns={'diff': '{}_{}'.format(name, team)})
-        last_games_won__against_opponent = self\
-            .lag_features(last_games_won__against_opponent,
+            .rename(columns={'diff': '{}_{}'.format(name, team)})\
+            .fillna(0)
+        feats = self\
+            .lag_features(feats,
                           drop_unlagged=True)
-        return last_games_won__against_opponent
+        return feats
 
     def games_won_in_tourney_against_opponent(self, df, team):
         name = 'games_won_in_tourney_against_opponent'
-        games_won_in_tourney_against_opponent = self.tourney_games\
+        feats = self.tourney_games\
             .groupby(['WTeamID', 'LTeamID', 'Season']).count()[['diff']]\
-            .rename(columns={'diff': '{}_{}'.format(name, team)})
-        games_won_in_tourney_against_opponent = self\
-            .lag_features(games_won_in_tourney_against_opponent,
+            .rename(columns={'diff': '{}_{}'.format(name, team)})\
+            .fillna(0)
+        feats = self\
+            .lag_features(feats,
                           drop_unlagged=True)
-        return games_won_in_tourney_against_opponent
+        return feats
