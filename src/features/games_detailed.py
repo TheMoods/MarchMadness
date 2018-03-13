@@ -1,5 +1,5 @@
-import copy as cp
-import pandas as pd
+from copy import deepcopy
+from pandas import concat, read_csv
 from src.features.feature import Feature
 from src.features.games import GameFeatures
 
@@ -16,13 +16,13 @@ class GameDetailedFeatures(GameFeatures):
             .load_game_data('RegularSeasonDetailedResults_Prelim2018.csv')
         self.tourney_games = self\
             .load_game_data('NCAATourneyDetailedResults.csv')
-        self.all_games = pd.concat([
+        self.all_games = concat([
             self.season_games,
             self.tourney_games
         ])
 
     def load_game_data(self, path):
-        games = pd.read_csv('{}{}'.format(self.data_path, path))
+        games = read_csv('{}{}'.format(self.data_path, path))
         games = games.astype({
             'LTeamID': str,
             'WTeamID': str,
@@ -47,71 +47,27 @@ class GameDetailedFeatures(GameFeatures):
         return df
 
     def detail_features_by_game(self, df, team):
-        detail_features_by_game = pd.concat([
-            self.all_games.set_index(['WTeamID', 'Season', 'DayNum'])\
-                [[c.format('W') for c in self.detail_feature_cols]]\
-                .sort_index(ascending=True)\
-                .rename(columns={
-                    c.format('W'): c.format('') + '_game_' + team 
-                    for c in self.detail_feature_cols
-                }),
-            self.all_games.drop('WTeamID', axis=1)\
-                .rename(columns={'LTeamID': 'WTeamID'})\
-                .set_index(['WTeamID', 'Season', 'DayNum'])\
-                [[c.format('L') for c in self.detail_feature_cols]]\
-                .sort_index(ascending=True)\
-                .rename(columns={
-                    c.format('L'): c.format('') + '_game_' + team 
-                    for c in self.detail_feature_cols
-                })
-        ])
-        detail_features_by_game = self.lag_features(detail_features_by_game,
-                drop_unlagged=True)
-        return detail_features_by_game
-
-    def tourney_detail_features_summed_over_season(self, df, team):
-        tourney_detail_features_summed_over_season = pd.concat([
-            self.tourney_games\
-                .groupby(['WTeamID', 'Season']).sum()\
-                [[c.format('W') for c in self.detail_feature_cols]]\
-                .rename(columns={
-                    c.format('W'): c.format('') + '_tourney_' + team 
-                    for c in self.detail_feature_cols
-                }),
-            self.tourney_games.drop('LTeamID', axis=1)\
-                .rename(columns={'LTeamID': 'WTeamID'})\
-                .groupby(['WTeamID', 'Season']).sum()\
-                [[c.format('L') for c in self.detail_feature_cols]]\
-                .rename(columns={
-                    c.format('L'): c.format('') + '_tourney_' + team 
-                    for c in self.detail_feature_cols
-                })
-        ]).reset_index().groupby(['WTeamID', 'Season']).sum()
-        tourney_detail_features_summed_over_season = self.lag_features(tourney_detail_features_summed_over_season,
-                drop_unlagged=True)
-        return tourney_detail_features_summed_over_season
-
-    def season_detail_features_summed_over_season(self, df, team):
-        season_detail_features_summed_over_season = pd.concat([
-            self.season_games\
-                .groupby(['WTeamID', 'Season']).sum()\
-                [[c.format('W') for c in self.detail_feature_cols]]\
-                .rename(columns={
-                    c.format('W'): c.format('') + '_season_' + team 
-                    for c in self.detail_feature_cols
-                }),
-            self.season_games.drop('LTeamID', axis=1)\
-                .rename(columns={'LTeamID': 'WTeamID'})\
-                .groupby(['WTeamID', 'Season']).sum()\
-                [[c.format('L') for c in self.detail_feature_cols]]\
-                .rename(columns={
-                    c.format('L'): c.format('') + '_season_' + team 
-                    for c in self.detail_feature_cols
-                })
-        ]).reset_index().groupby(['WTeamID', 'Season']).sum()
-        season_detail_features_summed_over_season = self.lag_features(season_detail_features_summed_over_season,
-                drop_unlagged=False)
-        return season_detail_features_summed_over_season
-
-        new_df['a_win'] = df['a_win']
-        return new_df
+        games = self.all_games.set_index(['WTeamID', 'LTeamID'])
+        time_cols = ['Season', 'DayNum']
+        winner_cols = [c.format('W') for c in self.detail_feature_cols]
+        winner_features = deepcopy(games[winner_cols + time_cols])
+        winner_features.columns = [c[1:] + '_' + team
+                                   for c in winner_cols] + time_cols
+        winner_features.index = winner_features.index.droplevel(1)
+        looser_cols = [c.format('L') for c in self.detail_feature_cols]
+        looser_features = deepcopy(games[looser_cols + time_cols])
+        looser_features.columns = [c[1:] + '_' + team
+                                   for c in looser_cols] + time_cols
+        looser_features.index = looser_features.index.droplevel(0)
+        feats = concat([looser_features, winner_features])\
+            .reset_index().rename(columns={'index': 'team_id'})
+        last_days = feats\
+            .groupby(['team_id', 'Season']).last()\
+            .reset_index()
+        last_days['DayNum'] = 366
+        feats = \
+            concat([feats,
+                    last_days[last_days.Season == last_days.Season.max()]])
+        feats.set_index(['team_id', 'Season', 'DayNum'], inplace=True)
+        feats = self.lag_features(feats, drop_unlagged=True)
+        return feats

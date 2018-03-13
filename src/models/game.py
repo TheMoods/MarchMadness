@@ -6,6 +6,7 @@ from numpy import ceil
 from pandas import DataFrame, to_datetime, concat
 from sklearn.metrics import log_loss
 from sklearn.model_selection import KFold
+from sklearn.ensemble import RandomForestClassifier
 from src.utils import load_data_template
 from src.features import *
 from xgboost import XGBClassifier
@@ -48,27 +49,28 @@ class GameModel(object):
 #         data.fillna(0, inplace=True)
 #         print(data.shape)
 
-        print('-- Game Features --')
-        game_feat = GameFeatures()
-        data = game_feat.per_team_wrapper(
-            data, game_feat.last_games_won_in_season)
-        data = game_feat.per_team_wrapper(
-            data, game_feat.last_games_won_in_tourney)
-        data = game_feat.per_team_wrapper(
-            data, game_feat.last_games_won_against_opponent,
-            per_game=True)
-        data = game_feat.per_team_wrapper(
-            data, game_feat.games_won_in_tourney_against_opponent,
-            per_game=True)
-        data.fillna(0, inplace=True)
-        print(data.shape)
-
-#         print('-- Game Detailed Features --')
-#         game_detail_feat = GameDetailedFeatures(default_lags=2)
-#         data = game_detail_feat.per_team_wrapper(
-#             data, game_detail_feat.detail_features_by_game, per_day=True)
+#         print('-- Game Features --')
+#         game_feat = GameFeatures()
+#         data = game_feat.per_team_wrapper(
+#             data, game_feat.last_games_won_in_season)
+#         data = game_feat.per_team_wrapper(
+#             data, game_feat.last_games_won_in_tourney)
+#         data = game_feat.per_team_wrapper(
+#             data, game_feat.last_games_won_against_opponent,
+#             per_game=True)
+#         data = game_feat.per_team_wrapper(
+#             data, game_feat.games_won_in_tourney_against_opponent,
+#             per_game=True)
 #         data.fillna(0, inplace=True)
 #         print(data.shape)
+
+        print('-- Game Detailed Features --')
+        game_detail_feat = GameDetailedFeatures(default_lags=7)
+        data = game_detail_feat.per_team_wrapper(
+            data, game_detail_feat.detail_features_by_game,
+            per_day=True)
+        data.fillna(0, inplace=True)
+        print(data.shape)
 
 #         print('-- Rankings --')
 #         rank_feat = RankingFeatures(default_lags=0)
@@ -170,3 +172,7 @@ class GameModel(object):
         fit_temp.dropna(subset=['a_win'], inplace=True)
         fit_temp = fit_temp.astype(self.index_dtypes)
         return fit_temp
+
+
+class GameModelRF(GameModel):
+    Estimator = RandomForestClassifier
