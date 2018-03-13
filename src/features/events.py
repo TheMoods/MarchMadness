@@ -3,6 +3,7 @@ import pandas as pd
 from sklearn.preprocessing import LabelEncoder, OneHotEncoder
 from src.features.feature import Feature
 
+
 class EventFeatures(Feature):
 
     def __init__(self, default_lags=3, rows=1000):
@@ -41,8 +42,3 @@ class EventFeatures(Feature):
                 columns={'steal': '{}_{}'.format(name, team)})
         steals = self.lag_features(steals, drop_unlagged=True)
         return steals
-
-
-
-
-
