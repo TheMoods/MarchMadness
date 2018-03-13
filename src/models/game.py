@@ -2,18 +2,16 @@ import matplotlib.pyplot as plt
 from datetime import datetime as dt
 from copy import deepcopy
 from functools import partial
-from numpy import ceil
+from numpy import ceil, nan
 from pandas import DataFrame, to_datetime, concat
 from sklearn.metrics import log_loss
 from sklearn.model_selection import KFold
-from sklearn.ensemble import RandomForestClassifier
-from src.utils import load_data_template
+from src.utils import load_target_sample, load_data_template
 from src.features import *
 from xgboost import XGBClassifier
 
 
 class GameModel(object):
-    Estimator = XGBClassifier
     index_dtypes = {
         'team_a': str,
         'team_b': str,
@@ -24,9 +22,18 @@ class GameModel(object):
                          'DayNum', 'team_a', 'team_b']
     target_cols = ['team_a', 'team_b', 'Season', 'DayNum', 'a_win', 'game_set']
 
-    def __init__(self, pred_data_temp):
-        self.pred_data_temp = pred_data_temp
-        self.load_data()
+    def __init__(self, pred_data_temp=None, preload=True,
+                 Estimator=None, feature_pipeline=None):
+        for p in ['pred_data_temp', 'Estimator', 'feature_pipeline']:
+            if locals()[p] is not None:
+                setattr(self, p, locals()[p])
+            elif not hasattr(self, p):
+                raise Exception('''
+                    Need to set `{}`
+                    in sublass or pass as argument
+                '''.format(p))
+        if preload:
+            self.load_data()
         self.cv_history = []
 
     def feature_pipeline(self, data):
@@ -127,7 +134,7 @@ class GameModel(object):
         for i in range(ceil(n / n_splits).astype(int)):
             kf = KFold(n_splits=n_splits, shuffle=True)
             for tr_i, t_i in kf.split(X):
-                X_tr, y_tr = X.iloc[tr_i], y.iloc[tr_i].a_win
+                X_tr, y_tr = X.iloc[tr_i], y.iloc[tr_i].a_win.astype(int)
                 X_t, y_t = X.iloc[t_i], y.iloc[t_i].a_win.astype(int)
                 estimator = self.Estimator(**ep)
                 estimator.fit(X_tr.values, y_tr)
@@ -170,5 +177,16 @@ class GameModel(object):
         return fit_temp
 
 
-class GameModelRF(GameModel):
-    Estimator = RandomForestClassifier
+class NCAAModel(GameModel):
+
+    def __init__(self, **kw_args):
+        self.load_pred_data_template()
+        super().__init__(**kw_args)
+
+    def load_pred_data_template(self):
+        temp = load_target_sample()
+        temp['Season'] = temp['Season'].astype(int)
+        temp['a_win'] = 'not predicted'
+        temp['DayNum'] = 366
+        temp['game_set'] = 0
+        self.pred_data_temp = temp
