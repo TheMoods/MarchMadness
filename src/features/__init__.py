@@ -1,3 +1,6 @@
+from src.features.conferences import *
+from src.features.coaches import *
+from src.features.events import *
 from src.features.ensemble import *
 from src.features.events import *
 from src.features.feature import *

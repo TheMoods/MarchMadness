@@ -64,7 +64,7 @@ class BetSet(object):
     cat_json_cols = ['runners', 'description', 'event']
     book_json_cols = ['runners']
 
-    def __init__(self, client, allow_local_load=True,
+    def __init__(self, client, request_refresh=True,
                  league_name='NCAAB', bet_type='MATCH_ODDS', currency='EUR',
                  name_to_id_path='data/Teams.csv'):
         """
@@ -79,11 +79,14 @@ class BetSet(object):
         self.league_name = league_name
         self.name_to_id_path = name_to_id_path
 
-        loaded = False
-        if allow_local_load:
-            loaded = self.load_last_data()
-        if not loaded:
-            self.request_data()
+        try:
+            if request_refresh:
+                self.request_data()
+        except StopIteration:
+            pass
+        finally:
+            if not self.load_last_data():
+                raise Exception("Couldn't get data")
 
         self.build_secondary_tables()
 

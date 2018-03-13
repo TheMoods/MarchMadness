@@ -1,13 +1,13 @@
 import matplotlib.pyplot as plt
+from datetime import datetime as dt
 from copy import deepcopy
 from functools import partial
 from numpy import ceil
-from pandas import DataFrame
+from pandas import DataFrame, to_datetime, concat
 from sklearn.metrics import log_loss
 from sklearn.model_selection import KFold
 from src.utils import load_data_template
-from src.features import GameFeatures, GameDetailedFeatures,\
-    SeedFeatures, EnsembleFeatures
+from src.features import *
 from xgboost import XGBClassifier
 
 
@@ -26,39 +26,76 @@ class GameModel(object):
     def __init__(self, pred_data_temp):
         self.pred_data_temp = pred_data_temp
         self.load_data()
+        self.cv_history = []
 
     def feature_pipeline(self, data):
-        game_feat = GameFeatures(default_lags=3)
-        data = game_feat\
-            .per_team_wrapper(data,
-                              game_feat.last_games_won_in_season,
-                              combine='subtract').fillna(0)
-        data = game_feat\
-            .per_team_wrapper(data,
-                              game_feat.last_games_won_in_tourney,
-                              combine='subtract').fillna(0)
-        data = game_feat\
-            .per_team_wrapper(data,
-                              game_feat.last_games_won_against_opponent,
-                              per_game=True,
-                              combine='subtract').fillna(0)
-        data = game_feat\
-            .per_team_wrapper(data,
-                              game_feat.games_won_in_tourney_against_opponent,
-                              per_game=True,
-                              combine='subtract').fillna(0)
-        game_detail_feat = GameDetailedFeatures(default_lags=3)
-        data = game_detail_feat\
-            .per_team_wrapper(data,
-                              game_detail_feat.detail_features_by_game,
-                              per_day=True,
-                              combine='subtract').fillna(0)
+        print('Running Feature Pipeline')
+        start = dt.now()
+
+        print('-- Seeds --')
         seed_feat = SeedFeatures()
-        data = seed_feat\
-            .per_team_wrapper(data,
-                              seed_feat.team_seeds,
-                              combine='subtract').fillna(0)
-        data.dropna(inplace=True)
+        data = seed_feat.per_team_wrapper(
+            data, seed_feat.team_seeds,
+            per_game=False, per_day=False, combine='subtract')
+        print(data.shape)
+
+        print('-- Coach --')
+        coach_feat = CoachFeatures(default_lags=0)
+        data = coach_feat.per_team_wrapper(
+            data, coach_feat.coach_func,
+            per_game=False, per_day=False)
+        print(data.shape)
+
+        print('-- Conferences --')
+        conf_feat = ConferenceFeatures(default_lags=0)
+        data = conf_feat.per_team_wrapper(
+            data, conf_feat.conference_games,
+            per_game=False, per_day=False)
+        data.fillna(0, inplace=True)
+        print(data.shape)
+
+        print('-- Events --')
+        event_feat = EventFeatures(default_lags=1)
+        data = event_feat.per_team_wrapper(
+            data, event_feat.steals_in_season)
+        data.fillna(0, inplace=True)
+        print(data.shape)
+
+        print('-- Game Features --')
+        game_feat = GameFeatures()
+        data = game_feat.per_team_wrapper(
+            data, game_feat.last_games_won_in_season)
+        data = game_feat.per_team_wrapper(
+            data, game_feat.last_games_won_in_tourney)
+        data = game_feat.per_team_wrapper(
+            data, game_feat.last_games_won_against_opponent,
+            per_game=True)
+        data = game_feat.per_team_wrapper(
+            data, game_feat.games_won_in_tourney_against_opponent,
+            per_game=True)
+        data.fillna(0, inplace=True)
+        print(data.shape)
+
+        print('-- Game Detailed Features --')
+        game_detail_feat = GameDetailedFeatures(default_lags=2)
+        data = game_detail_feat.per_team_wrapper(
+            data, game_detail_feat.detail_features_by_game, per_day=True)
+        data.fillna(0, inplace=True)
+        print(data.shape)
+
+        print('-- Rankings --')
+        # rank_feat = RankingFeatures(default_lags=0)
+        # data = rank_feat.per_team_wrapper(
+        #     data, rank_feat.pca_variables_rankings,
+        #     per_game=False, per_day=False)
+        # data = rank_feat.per_team_wrapper(
+        #     data, rank_feat.elos_season,
+        #     per_game=False, per_day=False)
+        data.fillna(0, inplace=True)
+        print(data.shape)
+
+        print('Feature Pipeline Clock: {} Seconds'
+              .format((dt.now() - start).seconds))
         return data
 
     def load_fit_features(self):
@@ -92,7 +129,7 @@ class GameModel(object):
         self.pred_targets['b_win'] = pred[:, 0]
         self.pred_targets['a_win'] = pred[:, 1]
 
-    def cross_validate(self, n=1, n_splits=3, show_hist=False,
+    def cross_validate(self, n=1, n_splits=3, show_histogram=False,
                        estimator_params={}):
         X = self.fit_features
         y = self.fit_targets
@@ -122,16 +159,24 @@ class GameModel(object):
                 # COMPETITION SPECIFIC CODE END
 
         cv_results = DataFrame(cv_results)
-        if show_hist:
-            for c in cv_results.columns:
-                plt.figure(figsize=(20, 4))
-                # plt.xlim([0, .25])
-                plt.hist(cv_results[c].values,
-                         bins=ceil(n / 7).astype(int))
-                plt.show()
+        cv_results['timestamp'] = to_datetime(dt.now())
+        cv_results.set_index('timestamp', inplace=True)
+        for name, value in estimator_params.items():
+            cv_results['ep_{}'.format(name)] = value
+
+        self.cv_history.append(cv_results)
+        if show_histogram:
+            c = 'log_loss'
+            plt.figure(figsize=(20, 4))
+            plt.hist(cv_results[c].values,
+                     bins=ceil(n / 7).astype(int))
+            plt.show()
 
         self.cv_results = cv_results
         return self.cv_results.agg(['mean', 'std', 'min', 'max'])
+
+    def get_cv_history(self):
+        return concat(self.cv_history)
 
     def get_fit_data_temp(self):
         fit_temp = load_data_template(season=False)
