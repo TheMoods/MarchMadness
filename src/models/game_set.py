@@ -18,8 +18,8 @@ class GameSetModel(object):
         self.bet_set = bet_set or self.get_bet_set()
         self.model = model or self.get_model()
 
-    def load_prediction_table(self):
-        self.model.fit()
+    def load_prediction_table(self, ep={}):
+        self.model.fit(ep=ep)
         self.model.predict()
         predictions = concat([
             self.model.pred_targets.set_index('team_a')['a_win'],
@@ -50,7 +50,7 @@ class GameSetModel(object):
                       league_name='NCAAB',
                       bet_type='MATCH_ODDS',
                       currency='EUR',
-                      request_refresh=False)
+                      request_refresh=True)
 
     def get_model(self):
         return GameModel(pred_data_temp=self.get_pred_data_temp())

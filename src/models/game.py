@@ -2,18 +2,16 @@ import matplotlib.pyplot as plt
 from datetime import datetime as dt
 from copy import deepcopy
 from functools import partial
-from numpy import ceil
+from numpy import ceil, nan
 from pandas import DataFrame, to_datetime, concat
 from sklearn.metrics import log_loss
 from sklearn.model_selection import KFold
-from sklearn.ensemble import RandomForestClassifier
-from src.utils import load_data_template
+from src.utils import load_target_sample, load_data_template
 from src.features import *
 from xgboost import XGBClassifier
 
 
 class GameModel(object):
-    Estimator = XGBClassifier
     index_dtypes = {
         'team_a': str,
         'team_b': str,
@@ -24,45 +22,45 @@ class GameModel(object):
                          'DayNum', 'team_a', 'team_b']
     target_cols = ['team_a', 'team_b', 'Season', 'DayNum', 'a_win', 'game_set']
 
-    def __init__(self, pred_data_temp):
-        self.pred_data_temp = pred_data_temp
-        self.load_data()
+    def __init__(self, pred_data_temp=None, preload=True,
+                 Estimator=None, feature_pipeline=None):
+        for p in ['pred_data_temp', 'Estimator', 'feature_pipeline']:
+            if locals()[p] is not None:
+                setattr(self, p, locals()[p])
+            elif not hasattr(self, p):
+                raise Exception('''
+                    Need to set `{}`
+                    in sublass or pass as argument
+                '''.format(p))
+        if preload:
+            self.load_data()
         self.cv_history = []
 
     def feature_pipeline(self, data):
         print('Running Feature Pipeline')
         start = dt.now()
 
-#         print('-- Seeds --')
-#         seed_feat = SeedFeatures()
-#         data = seed_feat.per_team_wrapper(
-#             data, seed_feat.team_seeds,
-#             per_game=False, per_day=False)
-#         print(data.shape)
+        print('-- Seeds --')
+        seed_feat = SeedFeatures()
+        data = seed_feat.per_team_wrapper(
+            data, seed_feat.team_seeds,
+            per_game=False, per_day=False)
+        print(data.shape)
 
-#         print('-- Events --')
-#         event_feat = EventFeatures(default_lags=1)
-#         data = event_feat.per_team_wrapper(
-#             data, event_feat.steals_in_season)
-#         data = event_feat.per_team_wrapper(
-#             data, event_feat.turnovers_in_season)
-#         data.fillna(0, inplace=True)
-#         print(data.shape)
-
-#         print('-- Game Features --')
-#         game_feat = GameFeatures()
-#         data = game_feat.per_team_wrapper(
-#             data, game_feat.last_games_won_in_season)
-#         data = game_feat.per_team_wrapper(
-#             data, game_feat.last_games_won_in_tourney)
-#         data = game_feat.per_team_wrapper(
-#             data, game_feat.last_games_won_against_opponent,
-#             per_game=True)
-#         data = game_feat.per_team_wrapper(
-#             data, game_feat.games_won_in_tourney_against_opponent,
-#             per_game=True)
-#         data.fillna(0, inplace=True)
-#         print(data.shape)
+        print('-- Game Features --')
+        game_feat = GameFeatures()
+        data = game_feat.per_team_wrapper(
+            data, game_feat.last_games_won_in_season)
+        data = game_feat.per_team_wrapper(
+            data, game_feat.last_games_won_in_tourney)
+        data = game_feat.per_team_wrapper(
+            data, game_feat.last_games_won_against_opponent,
+            per_game=True)
+        data = game_feat.per_team_wrapper(
+            data, game_feat.games_won_in_tourney_against_opponent,
+            per_game=True)
+        data.fillna(0, inplace=True)
+        print(data.shape)
 
         print('-- Game Detailed Features --')
         game_detail_feat = GameDetailedFeatures(default_lags=7)
@@ -109,7 +107,11 @@ class GameModel(object):
         self.load_fit_features()
         self.load_pred_features()
 
-    def fit(self):
+    def fit_predict(self, ep={}):
+        self.fit(ep=ep)
+        return self.predict()
+
+    def fit(self, ep={}):
         self.estimator = self.Estimator()
         self.estimator.fit(self.fit_features, self.fit_targets['a_win'])
 
@@ -117,9 +119,10 @@ class GameModel(object):
         pred = self.estimator.predict_proba(self.pred_features)
         self.pred_targets['b_win'] = pred[:, 0]
         self.pred_targets['a_win'] = pred[:, 1]
+        return self.pred_targets
 
     def cross_validate(self, n=1, n_splits=3, show_histogram=False,
-                       estimator_params={}):
+                       ep={}):
         X = self.fit_features
         y = self.fit_targets
         cv_results = {
@@ -131,9 +134,9 @@ class GameModel(object):
         for i in range(ceil(n / n_splits).astype(int)):
             kf = KFold(n_splits=n_splits, shuffle=True)
             for tr_i, t_i in kf.split(X):
-                X_tr, y_tr = X.iloc[tr_i], y.iloc[tr_i].a_win
+                X_tr, y_tr = X.iloc[tr_i], y.iloc[tr_i].a_win.astype(int)
                 X_t, y_t = X.iloc[t_i], y.iloc[t_i].a_win.astype(int)
-                estimator = self.Estimator(**estimator_params)
+                estimator = self.Estimator(**ep)
                 estimator.fit(X_tr.values, y_tr)
                 preds = estimator.predict_proba(X_t.values)
                 log_loss_metric = log_loss(y_t.values, preds,
@@ -150,7 +153,7 @@ class GameModel(object):
         cv_results = DataFrame(cv_results)
         cv_results['timestamp'] = to_datetime(dt.now())
         cv_results.set_index('timestamp', inplace=True)
-        for name, value in estimator_params.items():
+        for name, value in ep.items():
             cv_results['ep_{}'.format(name)] = value
 
         self.cv_history.append(cv_results)
@@ -174,5 +177,16 @@ class GameModel(object):
         return fit_temp
 
 
-class GameModelRF(GameModel):
-    Estimator = RandomForestClassifier
+class NCAAModel(GameModel):
+
+    def __init__(self, **kw_args):
+        self.load_pred_data_template()
+        super().__init__(**kw_args)
+
+    def load_pred_data_template(self):
+        temp = load_target_sample()
+        temp['Season'] = temp['Season'].astype(int)
+        temp['a_win'] = 'not predicted'
+        temp['DayNum'] = 366
+        temp['game_set'] = 0
+        self.pred_data_temp = temp
