@@ -9,7 +9,7 @@ class RankingFeatures(Feature):
         super().__init__()
         self.default_lags = default_lags
         self.rankings = self\
-                .load_rankings('MasseyOrdinals.csv')
+                .load_rankings('MasseyOrdinals_thruSeason2018_Day128.csv')
         self.elos = self\
                 .load_elos('season_elos.csv')
 
