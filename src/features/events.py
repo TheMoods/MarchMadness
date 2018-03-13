@@ -44,7 +44,7 @@ class EventFeatures(Feature):
 
     def total_events_in_season(self, df, team, name='total'):
         total_events = self.events\
-                .groupby(['EventTeamID', 'DayNum']).sum()\
+                .groupby(['EventTeamID', 'Season', 'DayNum']).sum()\
                 .groupby(['EventTeamID', 'Season'])[self.event_columns].sum()
         total_events = pd.DataFrame(total_events).rename(
             columns={key: '{}_{}_{}'.format(key, name, team) 
@@ -54,8 +54,8 @@ class EventFeatures(Feature):
 
     def average_events_in_season(self, df, team, name='avg'):
         total_events = self.events\
-                .groupby(['EventTeamID', 'DayNum', 'Season'])\
-                [self.event_columns].mean()
+                .groupby(['EventTeamID', 'Season', 'DayNum']).sum()\
+                .groupby(['EventTeamID', 'Season'])[self.event_columns].mean()
         total_events = pd.DataFrame(total_events).rename(
             columns={key: '{}_{}_{}'.format(key, name, team)
                      for key in self.event_columns})
