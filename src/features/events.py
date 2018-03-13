@@ -43,3 +43,12 @@ class EventFeatures(Feature):
         return steals
         steals = self.lag_features(steals, drop_unlagged=True)
         return steals
+
+    def turnovers_in_season(self, df, team, name='turnovers_in_season'):
+        turnovers = self.events\
+            .groupby(['EventTeamID', 'Season'])['turnover'].sum()
+        turnovers = pd.DataFrame(turnovers).rename(
+                columns={'turnover': '{}_{}'.format(name, team)})
+        return turnovers
+        turnovers = self.lag_features(turnovers, drop_unlagged=True)
+        return turnovers

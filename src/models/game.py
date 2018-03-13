@@ -43,6 +43,8 @@ class GameModel(object):
 #         event_feat = EventFeatures(default_lags=1)
 #         data = event_feat.per_team_wrapper(
 #             data, event_feat.steals_in_season)
+#         data = event_feat.per_team_wrapper(
+#             data, event_feat.turnovers_in_season)
 #         data.fillna(0, inplace=True)
 #         print(data.shape)
 
