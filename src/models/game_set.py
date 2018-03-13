@@ -71,7 +71,7 @@ class GameSetModel(object):
         pred_temp['Season'] = 2017
         pred_temp['DayNum'] = 366
         pred_temp['a_win'] = nan
-        pred_temp['game_set'] = 1
+        pred_temp['game_set'] = 0
         pred_temp['in_target'] = True
         pred_temp.reset_index(inplace=True)
         pred_temp.drop(['external_id', 'marketTime', 'eventName'],
