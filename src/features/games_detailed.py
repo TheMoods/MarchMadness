@@ -13,7 +13,7 @@ class GameDetailedFeatures(GameFeatures):
         super().__init__()
         self.default_lags = default_lags
         self.season_games = self\
-            .load_game_data('RegularSeasonDetailedResults.csv')
+            .load_game_data('RegularSeasonDetailedResults_Prelim2018.csv')
         self.tourney_games = self\
             .load_game_data('NCAATourneyDetailedResults.csv')
         self.all_games = pd.concat([

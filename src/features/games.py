@@ -10,7 +10,7 @@ class GameFeatures(Feature):
         self.tourney_games = self\
             .load_game_data('NCAATourneyCompactResults.csv')
         self.season_games = self\
-            .load_game_data('RegularSeasonCompactResults.csv')
+            .load_game_data('RegularSeasonCompactResults_Prelim2018.csv')
         self.all_games = pd.concat([
             self.tourney_games, self.season_games
         ])

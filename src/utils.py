@@ -3,7 +3,7 @@ from sklearn.preprocessing import LabelEncoder
 
 
 def load_target_sample():
-    target = pd.read_csv('data/SampleSubmissionStage1.csv').set_index('ID')\
+    target = pd.read_csv('data/SampleSubmissionStage2.csv').set_index('ID')\
         .drop('Pred', axis=1)
     target['Season'] = target.index.map(lambda i: i[:4])
     target['team_a'] = target.index.map(lambda i: i[5:9])
@@ -18,7 +18,7 @@ def load_data_template(season=False):
     tourney_games['game_set'] = 'ncaa'
     data = [tourney_games]
     if season:
-        season_games = pd.read_csv('data/RegularSeasonCompactResults.csv')
+        season_games = pd.read_csv('data/RegularSeasonCompactResults_Prelim2018.csv')
         season_games['game_set'] = 'season'
         data.append(season_games)
 
