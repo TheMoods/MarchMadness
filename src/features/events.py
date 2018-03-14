@@ -61,3 +61,23 @@ class EventFeatures(Feature):
                      for key in self.event_columns})
         total_events = self.lag_features(total_events, drop_unlagged=True)
         return total_events
+
+    def total_events_by_game(self, df, team, name='total'):
+        total_events = self.events\
+                .groupby(['EventTeamID', 'Season', 'DayNum'])\
+                [self.event_columns].sum()
+        total_events = pd.DataFrame(total_events).rename(
+            columns={key: '{}_{}_{}'.format(key, name, team) 
+                     for key in self.event_columns})
+        total_events = self.lag_features(total_events, drop_unlagged=True)
+        return total_events
+
+    def average_events_by_game(self, df, team, name='avg'):
+        total_events = self.events\
+                .groupby(['EventTeamID', 'Season', 'DayNum'])\
+                [self.event_columns].mean()
+        total_events = pd.DataFrame(total_events).rename(
+            columns={key: '{}_{}_{}'.format(key, name, team)
+                     for key in self.event_columns})
+        total_events = self.lag_features(total_events, drop_unlagged=True)
+        return total_events
