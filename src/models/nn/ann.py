@@ -19,7 +19,7 @@ class ANN(object):
         self.network = Network(input_dim, hidden_units, dropout, eta)
         self.sess = None
 
-    def train(self, X, Y, X_eval=None, Y_eval=None, verbose=False):
+    def fit(self, X, Y, X_eval=None, Y_eval=None, verbose=False):
         init = tf.global_variables_initializer()
         self.saver = tf.train.Saver()
         self.sess = tf.Session()
@@ -57,11 +57,11 @@ class ANN(object):
                               "--- time per epoch={:.2f} seconds"\
                                       .format(epoch_time))
                 else:
+                    print(probs[:5])
                     if verbose:
                         print("Epoch:", '%03d' % (epoch),
                               "train_loss={:.3f}".format(avg_loss))
         self.saver.save(self.sess, "src/saved_models/model.ckpt")
-        return avg_loss, eval_loss
 
     def validate(self, X, Y, k_p=1):
         nodes = [self.network.loss, self.network.probs]
@@ -73,12 +73,15 @@ class ANN(object):
         eval_loss, probs = self.sess.run(nodes, feed_dict=feed_dict)
         return eval_loss, probs
 
-    def predict(self, X, samples=None):
+    def predict_proba(self, X, samples=None):
         self.saver.restore(self.sess, "src/saved_models/model.ckpt")
         if samples is None:
-            nodes = [self.network.output]
+            nodes = [self.network.probs]
             feed_dict = {self.network.X: X}
-            predictions = self.sess.run(nodes, feed_dict=feed_dict)
+            predictions = self.sess.run(nodes, feed_dict=feed_dict)[0]
+            print(predictions)
+            predictions = np.column_stack(([predictions, predictions]))
+            predictions[:,0] = 1-predictions[:,0]
         else:
             predictions = list()
             for _ in range(samples):
