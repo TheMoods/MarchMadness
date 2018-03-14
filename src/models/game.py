@@ -152,6 +152,15 @@ class NCAAModel(GameModel):
         self.load_pred_data_template()
         super().__init__(**kw_args)
 
+    def get_preds_with_teams(self):
+        id2team = read_csv('data/Teams.csv').astype({'TeamID': str})
+        return self.pred_targets\
+            .join(id2team.set_index('TeamID')['TeamName'],
+                  how='left', on='team_a')\
+            .join(id2team.set_index('TeamID')['TeamName'],
+                  how='left', on='team_b',
+                  lsuffix='_a', rsuffix='_b')
+
     def load_pred_data_template(self):
         temp = load_target_sample()
         temp['Season'] = temp['Season'].astype(int)
