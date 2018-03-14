@@ -112,7 +112,7 @@ class GameModel(object):
         return self.predict()
 
     def fit(self, ep={}):
-        self.estimator = self.Estimator()
+        self.estimator = self.Estimator(**ep)
         self.estimator.fit(self.fit_features, self.fit_targets['a_win'])
 
     def predict(self):
