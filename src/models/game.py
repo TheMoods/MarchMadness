@@ -126,6 +126,7 @@ class GameModel(object):
             if isinstance(value, list):
                 for i, elem in enumerate(value):
                     cv_results['ep_{}_{}'.format(name, i)] = elem
+                continue
 
             cv_results['ep_{}'.format(name)] = value
 

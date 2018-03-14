@@ -79,7 +79,6 @@ class ANN(object):
             nodes = [self.network.probs]
             feed_dict = {self.network.X: X}
             predictions = self.sess.run(nodes, feed_dict=feed_dict)[0]
-            print(predictions)
             predictions = np.column_stack(([predictions, predictions]))
             predictions[:,0] = 1-predictions[:,0]
         else:
